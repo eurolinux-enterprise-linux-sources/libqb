@@ -1,6 +1,6 @@
 Name:           libqb
 Version:        0.17.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        An IPC library for high performance servers
 
 Group:          System Environment/Libraries
@@ -11,6 +11,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 # need this to build on rhel5 build boxes
 Patch1:         01-build-on-brew.patch
+Patch2:		bz1276345-increase-socket-field-len.patch
 
 ExclusiveArch: i686 x86_64 s390
 # not ppc at this point
@@ -27,6 +28,7 @@ Initially these are IPC and poll.
 %setup -q
 
 %patch1 -p1
+%patch2 -p1
 
 %build
 ./autogen.sh
@@ -74,6 +76,10 @@ developing applications that use %{name}.
 %{_mandir}/man8/qb-blackbox.8.gz
 
 %changelog
+* Fri Nov 27 2015 Christine Caulfield <ccaulfie@redhat.com> - 0.17.1-2
+- Increase size of the buffer where we make the socket name to allow for longer PIDs 
+  Resolves: rhbz#1276345
+
 * Mon Jan 19 2015 David Vossel <dvossel@redhat.com> - 0.17.1-1
 - Rebase to libqb v0.17.1
   Resolves: rhbz#1110042
