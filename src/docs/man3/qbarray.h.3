@@ -1,4 +1,4 @@
-.TH "qbarray.h" 3 "Thu Jul 25 2013" "Version 0.16.0" "libqb" \" -*- nroff -*-
+.TH "qbarray.h" 3 "Tue Aug 26 2014" "Version 0.17.1" "libqb" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -69,13 +69,13 @@ This is a dynamic array (it can grow, but without moving memory)\&.
 
 .PP
 .nf
-arr = qb_array_create_2(64, sizeof(struct my_struct), 256);
-\&.\&.\&.
-res = qb_array_index(arr, idx, (void**)&my_ptr);
-if (res < 0) {
-     return res;
-}
-// use my_ptr, now even if there is a grow, this pointer will be valid\&.
+   arr = qb_array_create_2(64, sizeof(struct my_struct), 256);
+   \&.\&.\&.
+   res = qb_array_index(arr, idx, (void**)&my_ptr);
+   if (res < 0) {
+        return res;
+   }
+   // use my_ptr, now even if there is a grow, this pointer will be valid\&.
 .fi
 .PP
  

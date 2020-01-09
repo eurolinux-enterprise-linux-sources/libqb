@@ -1,6 +1,6 @@
 Name:           libqb
-Version:        0.16.0
-Release:        2%{?dist}
+Version:        0.17.1
+Release:        1%{?dist}
 Summary:        An IPC library for high performance servers
 
 Group:          System Environment/Libraries
@@ -9,6 +9,7 @@ URL:            http://www.libqb.org
 Source0:        https://fedorahosted.org/releases/q/u/quarterback/%{name}-%{version}.tar.xz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
+# need this to build on rhel5 build boxes
 Patch1:         01-build-on-brew.patch
 
 ExclusiveArch: i686 x86_64 s390
@@ -73,6 +74,10 @@ developing applications that use %{name}.
 %{_mandir}/man8/qb-blackbox.8.gz
 
 %changelog
+* Mon Jan 19 2015 David Vossel <dvossel@redhat.com> - 0.17.1-1
+- Rebase to libqb v0.17.1
+  Resolves: rhbz#1110042
+
 * Wed Jul 25 2013 David Vossel <dvossel@redhat.com> - 0.16.0-2
 - Re-add fix required to build under brew.
   Resolves: rhbz#950403

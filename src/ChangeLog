@@ -1,3 +1,375 @@
+2014-08-26  David Vossel  <dvossel@redhat.com>
+
+	Low: release.mk: update gpg public key
+
+2014-08-22  David Vossel  <dvossel@redhat.com>
+
+	Revise version to 0.17.1 The next release is only a point release
+
+	Bump release version to 0.18.0
+	preparing for a new release
+
+2014-08-21  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #132 from davidvossel/master
+	regression test failure fixes
+
+	Low: qbipcs.h: fix doxygen comments for ipcs buffer size enforcement
+
+	Low: check_ipc.c: improve error checking during ipc stress tests
+
+	Fix: ipcs: Correctly allocate receive buffer size
+
+2014-08-14  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #131 from davidvossel/reformatting
+	High: ipc_socket: Signalhandler must be resetted to Default, use only cl...
+
+2014-08-14  Super-User  <andreas.grueninger@lgl.bwl.de>
+
+	High: ipc_socket: Signalhandler must be resetted to Default, use only cleanup_sigpipe to return from qb_ipc_dgram_sock_setup.
+	Some OS like Solaris/Illumos return with ECONNRESET or EPIPE in the case of a disconnecting peer.
+	Change the return code to ENOTCONN and continue.
+
+2014-08-11  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #128 from davidvossel/17.1.fixes
+	High: trie: allow modifying the trie map during the notify callback
+
+2014-07-30  David Vossel  <dvossel@redhat.com>
+
+	High: trie: allow modifying the trie map during the notify callback
+
+2014-07-23  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #127 from davidvossel/17.1.fixes
+	Low: log: return filter type enum to preserve abi compatibilty with corosync
+
+	Low: log: return filter type enum to preserve abi compatibilty with corosync
+	This returns abi compatiblity with libqb v0.16.0. There was a subtle
+	change in behavior caused by reordering the log filter enum in
+	v0.17.0.
+
+	Merge pull request #126 from davidvossel/17.1.fixes
+	build cleanup and thread-safe logging documentation
+
+	Low: doc: Add better documentation on thread-safe logging
+
+2014-07-23  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	Low: build: cleanup autogen warning to not overrride LDFLAGS
+
+	Low: build: update .gitignore and make maintainer-clean target
+
+2014-06-30  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #125 from hopkings2008/master
+	fix invalid option when run 'ipcclient -h'
+
+2014-06-30  zouyu  <hopkings2005@gmail.com>
+
+	fix invalid option when run 'ipcclient -h'
+
+2014-06-19  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #120 from AnchorCat/shm-connect-cleanup
+	ipc_shm: fix error handling in qb_ipcs_shm_connect()
+
+	Merge pull request #121 from AnchorCat/epoll
+	epoll: don't miss poll events under high load
+
+	Merge pull request #122 from AnchorCat/ringbuffer
+	Fix a couple of bugs in the ringbuffer code
+
+2014-06-05  Michael Chapman  <mike@very.puzzling.org>
+
+	epoll: don't miss poll events under high load
+	If multiple epoll sources generate events simultaneously, it is possible
+	for more jobs to be added to particular priority level than will be
+	handled in one go by qb_loop_run_level(). If one of these epoll sources
+	gains a new event (say, by switching from "readable" to "readable and
+	writeable"), then this new event would be missed.
+
+	To fix this, merge new epoll events into revents regardless of whether
+	the job is on the joblist. When the job is dispatched, revents will be
+	cleared, or the epoll source will be deleted entirely.
+
+	ipc_shm: fix error handling in qb_ipcs_shm_connect()
+	The request and response SHM segments were being closed under the wrong
+	labels, and the event SHM segment wasn't being cleaned up at all.
+
+2014-06-04  Michael Chapman  <mike@very.puzzling.org>
+
+	ringbuffer: fix size in qb_rb_create_from_file()
+	qb_rb_open() expects the size field to represent the maximum chunk size.
+	It adds QB_RB_CHUNK_MARGIN + 1 and rounds up to the page size to
+	determine the ringbuffer's total size. When creating a ringbuffer from a
+	file we must compensate by subtracting this amount from the file's size.
+
+	ringbuffer: fix qb_rb_open_2() debug format string
+	qb_log_target_formats() does not support formatting size_t values with
+	%zd.  Use %ld to format them as long integers instead.
+
+2014-05-12  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #118 from davidvossel/master
+	Fix: trie: fixes regression caused by ref count refactoring
+
+2014-05-09  David Vossel  <dvossel@redhat.com>
+
+	Fix: trie: fixes regression caused by ref count refactoring
+
+2014-04-04  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #116 from davidvossel/master
+	clang analyzer fixes
+
+	Low: trie: cleanup ref count logic in trie_notify_del
+
+	Low: ipcs: Cleanup unnecessary reference counting
+
+	Low: check: Update clang path in check script
+
+2014-03-12  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #115 from davidvossel/master
+	properly timeout ipc recv
+
+	Low: check_ipc: Verify ipc recv times out correctly
+
+	Fix: ipcc: Properly timeout during recv when timeout value is provided
+
+2014-03-05  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #113 from inouekazu/log_eagain
+	Low: ipc_setup.c: Add log for EAGAIN
+
+2014-02-25  David Vossel  <dvossel@redhat.com>
+
+	Low: check_ipc.c: Correctly check the event queue length for bulk events
+
+	Low: check_ipc.c: Correctly wait for server process to exit
+
+	Low: check_ipc.c: Avoid using MAX_MSG_SIZE macro directly in calculations
+
+	Low: build: Don't allow Bsymbolic-functions LDFLAG to be used, it breaks unit tests
+
+2014-02-20  Kazunori INOUE  <kazunori.inoue3@gmail.com>
+
+	Low: ipc_setup.c: Add log for EAGAIN
+
+2014-02-19  David Vossel  <dvossel@redhat.com>
+
+	Fix: build: Allow 'make rpm' to work with lightweight tags for release candidates
+
+	Fix: spec: reference correct url in spec file
+
+	Doc: update broken doxygen link to something that exists
+
+	Bump version to 0.17.0
+
+	Merge pull request #112 from davidvossel/master
+	Low: ipc_socket: further optimize max msg size calculations for fbsd portability tests
+
+2014-02-11  David Vossel  <dvossel@redhat.com>
+
+	Low: ipc_socket: further optimize max msg size calculations for fbsd portability tests
+
+2014-02-10  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #111 from davidvossel/master
+	Low: ipc_socket: Allow socket max msg size to be calculated more accurat...
+
+	Low: ipc_socket: Allow socket max msg size to be calculated more accurately
+
+2014-02-05  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #110 from davidvossel/master
+	Fix: fixes travis compile time error
+
+	Fix: fixes travis compile time error
+
+	Merge pull request #107 from davidvossel/ref_count_cleanup
+	High: ipcs: Prevent ipc server use after free.
+
+2014-01-20  David Vossel  <dvossel@redhat.com>
+
+	Low: tests: Fixes compile time issue with make check
+
+2014-01-17  David Vossel  <dvossel@redhat.com>
+
+	High: ipcs: Prevent ipc server use after free.
+	The ipc server registers the bind socket to
+	the poll loop in order to be alerted to new
+	connection requests. Upon shutdown, the ipc server
+	does not remove this poll entry. This patch fixes
+	this use after free.
+
+2014-01-16  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #106 from davidvossel/ref_count_cleanup
+	reference count fixes
+
+2014-01-15  David Vossel  <dvossel@redhat.com>
+
+	Low: ipc: Remove ipc connection reference given to dispatch functions
+	We don't need to give the dispatch_add callback a reference
+	since the dispatch_del callback must occur before the
+	connection is destroyed. This extra reference counting
+	causes unnecessary complexity.
+
+	High: ipc: Fixes memory leak in server connection accept when client partially connects
+
+2014-01-08  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #105 from gao-yan/ipc-server-backlog
+	IPC: Increase the listen backlog of IPC server
+
+2014-01-07  Gao,Yan  <ygao@suse.com>
+
+	IPC: Increase the listen backlog of IPC server
+
+2014-01-07  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #104 from davidvossel/master
+	Low: ipcs: Clarifications to the ipcs server callback documentation.
+
+	Low: ipcs: Clarifications to the ipcs server callback documentation.
+
+2014-01-02  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #103 from latinovic/master
+	Fix rb.test to avoid overwriting memory during reading.
+
+2013-12-24  Dejan Latinovic  <Dejan.Latinovic@rt-rk.com>
+
+	Fix rb.test to avoid overwriting memory during reading.
+	In test_ring_buffer1,
+	if the size of the chunk(90-93) is larger than size of the hdr (16),
+	it comes to overwriting memory during reading.
+
+2013-11-18  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #100 from davidvossel/server_side_buf_limit
+	Low: example: Update client/server example to use server enforced buffer...
+
+	Low: example: Update client/server example to use server enforced buffer size
+
+	Low: Client side buffer retrieval regression test
+
+	Feature: New api function to retrieve client buffer size
+	When server side buffer limits are in use, this is
+	necessary to determine the buffer size the server
+	is enforcing after the client connection is established.
+
+	Low: check_ipc.c: Verify server enforced buffer sizes work
+
+	Feature: Enforce buffer size limits on the server side
+
+	Merge pull request #99 from davidvossel/regex_logger
+	Regex logging filters
+
+	Merge pull request #98 from davidvossel/server_side_buf_limit
+	Server side max buffer limit
+
+2013-11-15  David Vossel  <dvossel@redhat.com>
+
+	Low: regession tests for regex log filters
+
+	Feature: Filter logs using regex patter on function, format, or filename
+
+2013-10-21  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #96 from jfriesse/master
+	ipc_setup: Set SO_PASSCRED on listener socket
+
+2013-10-21  Jan Friesse  <jfriesse@redhat.com>
+
+	ipc_setup: Set SO_PASSCRED on listener socket
+	This is needed, because newer kernels doesn't correctly support setting
+	SO_PASSCRED on sockets returned by accept call, but socket option must
+	be set on server socket (before accept call).
+
+	For more details, see:
+	http://patchwork.ozlabs.org/patch/284366/
+
+2013-10-17  David Vossel  <dvossel@redhat.com>
+
+	Fix: log: Filtering by function and file must match exactly, no substring matches
+
+	Merge pull request #95 from davidvossel/master
+	Fix: log: Filtering by function and file must match exactly, no substrin...
+
+2013-10-09  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #93 from davidvossel/master
+	ipc and blackbox fixes
+
+2013-10-08  David Vossel  <dvossel@redhat.com>
+
+	Low: blackbox: Abort blackbox logging on ringbuffer overwrite reclaim error
+
+	High: ipcs: Api function allowing server to retrieve client connection's ipc buffer size
+
+	Merge pull request #92 from davidvossel/blackbox_unique_files
+	Blackbox unique files
+
+2013-10-03  David Vossel  <dvossel@redhat.com>
+
+	Low: ringbuffer: Abort during chunk reclaim if OVERWRITE flag is set and reclaim fails.
+
+	High: blackbox: unique blackbox ringbuffer files per pid
+
+2013-09-18  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #91 from VladMalov/patch-1
+
+2013-09-17  VladMalov  <vmalov@exablox.com>
+
+	Update README.markdown
+	ClusterLabs not clusterlabs - git hub is case sensitive now days.
+
+2013-09-16  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #90 from davidvossel/master
+	Low: ipc_socket: Fixes fd leak in socket ipc client disconnection
+
+	Low: ipc_socket: Fixes fd leak in socket ipc client disconnection
+
+2013-09-03  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #88 from r1mikey/master
+	Fix sockaddr_un.sun_path overflow on Mac OS X 10.9
+
+2013-09-03  Michael van der Westhuizen  <r1mikey@gmail.com>
+
+	Use sizeof to get the correct size of the sockaddr_un sun_path member in a portable way. Fixes corosync on Mac OS X.
+
+2013-08-20  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #87 from anchor/del-during-dispatch-v2
+	Avoid double-decrement of level->todo
+
+2013-08-19  David Vossel  <dvossel@redhat.com>
+
+	Detect the max signal value that can be used using NSIG macro
+
+2013-08-19  Michael Chapman  <mike@very.puzzling.org>
+
+	Avoid double-decrement of level->todo
+	If a job's dispatch function deletes the job, we may end up decrementing
+	the job queue's todo count twice. Verify that the job is on the queue
+	before decrementing.
+
+2013-08-19  David Vossel  <dvossel@redhat.com>
+
+	Merge pull request #85 from r1mikey/master
+	Use a system-supplied maximum number of signals on Mac OS X.
+
+2013-08-11  Michael van der Westhuizen  <r1mikey@gmail.com>
+
+	Use a system-supplied maximum number of signals on Mac OS X.  This gets SIGUSR2 (#31) working.
+
 2013-07-25  David Vossel  <dvossel@redhat.com>
 
 	Bump version to 0.16.0 ... do not use version 0.15.0

@@ -1,4 +1,4 @@
-.TH "qbipcs.h" 3 "Thu Jul 25 2013" "Version 0.16.0" "libqb" \" -*- nroff -*-
+.TH "qbipcs.h" 3 "Tue Aug 26 2014" "Version 0.17.1" "libqb" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -66,7 +66,7 @@ Server IPC API\&.
 .ti -1c
 .RI "typedef int32_t(* \fBqb_ipcs_connection_accept_fn\fP )(\fBqb_ipcs_connection_t\fP *c, uid_t uid, gid_t gid)"
 .br
-.RI "\fIThis callback is to check wether you want to accept a new connection\&. \fP"
+.RI "\fIThis callback is to check whether you want to accept a new connection\&. \fP"
 .ti -1c
 .RI "typedef void(* \fBqb_ipcs_connection_created_fn\fP )(\fBqb_ipcs_connection_t\fP *c)"
 .br
@@ -198,6 +198,14 @@ Server IPC API\&.
 .RI "void \fBqb_ipcs_connection_auth_set\fP (\fBqb_ipcs_connection_t\fP *conn, uid_t uid, gid_t gid, mode_t mode)"
 .br
 .RI "\fISet the permissions on and shared memory files so that both processes can read and write to them\&. \fP"
+.ti -1c
+.RI "int32_t \fBqb_ipcs_connection_get_buffer_size\fP (\fBqb_ipcs_connection_t\fP *conn)"
+.br
+.RI "\fIRetrieve the connection ipc buffer size\&. \fP"
+.ti -1c
+.RI "void \fBqb_ipcs_enforce_buffer_size\fP (\fBqb_ipcs_service_t\fP *s, uint32_t max_buf_size)"
+.br
+.RI "\fIEnforce the max buffer size clients must use from the server side\&. \fP"
 .in -1c
 .SH "Detailed Description"
 .PP 
@@ -209,7 +217,7 @@ Server IPC API\&.
 .SS "typedef int32_t(* qb_ipcs_connection_accept_fn)(\fBqb_ipcs_connection_t\fP *c, uid_t uid, gid_t gid)"
 
 .PP
-This callback is to check wether you want to accept a new connection\&. The type of checks you should do are authentication, service availabilty or process resource constraints\&. 
+This callback is to check whether you want to accept a new connection\&. The type of checks you should do are authentication, service availabilty or process resource constraints\&. 
 .PP
 \fBReturns:\fP
 .RS 4
@@ -218,6 +226,8 @@ This callback is to check wether you want to accept a new connection\&. The type
 .PP
 \fBNote:\fP
 .RS 4
+If connection state data is allocated as a result of this callback being invoked, that data must be freed in the destroy callback\&. Just because the accept callback returns 0, that does not guarantee the create and closed callback functions will follow\&. 
+.PP
 you can call \fBqb_ipcs_connection_auth_set()\fP within this function\&. 
 .RE
 .PP
@@ -227,6 +237,8 @@ you can call \fBqb_ipcs_connection_auth_set()\fP within this function\&.
 .PP
 This is called after a connection has been disconnected\&. \fBNote:\fP
 .RS 4
+This callback will only be invoked if the connection is successfully created\&. 
+.PP
 if you return anything but 0 this function will be repeativily called (until 0 is returned)\&. 
 .RE
 .PP
@@ -234,7 +246,12 @@ if you return anything but 0 this function will be repeativily called (until 0 i
 .SS "typedef void(* qb_ipcs_connection_created_fn)(\fBqb_ipcs_connection_t\fP *c)"
 
 .PP
-This is called after a new connection has been created\&. 
+This is called after a new connection has been created\&. \fBNote:\fP
+.RS 4
+A client connection is not considered connected until this callback is invoked\&. 
+.RE
+.PP
+
 .SS "typedef void(* qb_ipcs_connection_destroyed_fn)(\fBqb_ipcs_connection_t\fP *c)"
 
 .PP
@@ -262,7 +279,7 @@ This is the message processing calback\&. It is called with the message data\&.
 .SS "enum \fBqb_ipcs_rate_limit\fP"
 
 .PP
-\fBEnumerator\fP
+\fBEnumerator: \fP
 .in +1c
 .TP
 \fB\fIQB_IPCS_RATE_FAST \fP\fP
@@ -274,6 +291,7 @@ This is the message processing calback\&. It is called with the message data\&.
 \fB\fIQB_IPCS_RATE_OFF \fP\fP
 .TP
 \fB\fIQB_IPCS_RATE_OFF_2 \fP\fP
+
 .SH "Function Documentation"
 .PP 
 .SS "void qb_ipcs_connection_auth_set (\fBqb_ipcs_connection_t\fP *conn, uid_tuid, gid_tgid, mode_tmode)"
@@ -290,7 +308,7 @@ Set the permissions on and shared memory files so that both processes can read a
 \fImode\fP the mode to set\&.
 .RE
 .PP
-\fBSee Also:\fP
+\fBSee also:\fP
 .RS 4
 chmod() chown() 
 .RE
@@ -317,6 +335,22 @@ call \fBqb_ipcs_connection_unref()\fP after using the connection\&.
 \fBReturns:\fP
 .RS 4
 first connection 
+.RE
+.PP
+
+.SS "int32_t qb_ipcs_connection_get_buffer_size (\fBqb_ipcs_connection_t\fP *conn)"
+
+.PP
+Retrieve the connection ipc buffer size\&. This reflects the largest size msg that can be sent or received\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIconn\fP connection instance 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+msg size in bytes, negative value on error\&. 
 .RE
 .PP
 
@@ -363,7 +397,7 @@ Get the context previously set on the service backing this connection\&. \fBPara
 the context 
 .RE
 .PP
-\fBSee Also:\fP
+\fBSee also:\fP
 .RS 4
 \fBqb_ipcs_service_context_set\fP 
 .RE
@@ -432,7 +466,7 @@ Get the context (set previously) \fBParameters:\fP
 the context 
 .RE
 .PP
-\fBSee Also:\fP
+\fBSee also:\fP
 .RS 4
 \fBqb_ipcs_context_set()\fP 
 .RE
@@ -448,7 +482,7 @@ Associate a 'user' pointer with this connection\&. \fBParameters:\fP
 \fIc\fP connection instance 
 .RE
 .PP
-\fBSee Also:\fP
+\fBSee also:\fP
 .RS 4
 \fBqb_ipcs_context_get()\fP 
 .RE
@@ -492,6 +526,22 @@ Disconnect from this client\&. \fBParameters:\fP
 .RE
 .PP
 
+.SS "void qb_ipcs_enforce_buffer_size (\fBqb_ipcs_service_t\fP *s, uint32_tmax_buf_size)"
+
+.PP
+Enforce the max buffer size clients must use from the server side\&. \fBNote:\fP
+.RS 4
+Setting this will force client connections to use at least max_buf_size bytes as their buffer size\&. If this value is not set on the server, the clients enforce their own buffer sizes\&.
+.RE
+.PP
+\fBParameters:\fP
+.RS 4
+\fIs\fP ipc server instance 
+.br
+\fImax_buf_size\fP represented in bytes 
+.RE
+.PP
+
 .SS "ssize_t qb_ipcs_event_send (\fBqb_ipcs_connection_t\fP *c, const void *data, size_tsize)"
 
 .PP
@@ -511,7 +561,9 @@ size sent or -errno for errors
 .PP
 \fBNote:\fP
 .RS 4
-the data must include a \fBqb_ipc_response_header\fP at the top of the message\&. The client will read the size field to determine how much to recv\&. 
+the data must include a \fBqb_ipc_response_header\fP at the top of the message\&. The client will read the size field to determine how much to recv\&.
+.PP
+When send returns -EMSGSIZE, this means the msg is too large and will never succeed\&. To determine the max msg size a client can be sent, use \fBqb_ipcs_connection_get_buffer_size()\fP 
 .RE
 .PP
 
@@ -534,7 +586,9 @@ size sent or -errno for errors
 .PP
 \fBNote:\fP
 .RS 4
-the iov[0] must be a \fBqb_ipc_response_header\fP\&. The client will read the size field to determine how much to recv\&. 
+the iov[0] must be a \fBqb_ipc_response_header\fP\&. The client will read the size field to determine how much to recv\&.
+.PP
+When send returns -EMSGSIZE, this means the msg is too large and will never succeed\&. To determine the max msg size a client can be sent, use \fBqb_ipcs_connection_get_buffer_size()\fP 
 .RE
 .PP
 
@@ -611,7 +665,9 @@ size sent or -errno for errors
 .PP
 \fBNote:\fP
 .RS 4
-the iov[0] must be a \fBqb_ipc_response_header\fP\&. The client will read the size field to determine how much to recv\&. 
+the iov[0] must be a \fBqb_ipc_response_header\fP\&. The client will read the size field to determine how much to recv\&.
+.PP
+When send returns -EMSGSIZE, this means the msg is too large and will never succeed\&. To determine the max msg size a client can be sent, use \fBqb_ipcs_connection_get_buffer_size()\fP 
 .RE
 .PP
 
@@ -642,7 +698,7 @@ Get the context (set previously) \fBParameters:\fP
 the context 
 .RE
 .PP
-\fBSee Also:\fP
+\fBSee also:\fP
 .RS 4
 \fBqb_ipcs_service_context_set()\fP 
 .RE
@@ -658,7 +714,7 @@ Associate a 'user' pointer with this service\&. \fBParameters:\fP
 \fIcontext\fP the pointer to associate with this service\&. 
 .RE
 .PP
-\fBSee Also:\fP
+\fBSee also:\fP
 .RS 4
 \fBqb_ipcs_service_context_get()\fP 
 .RE

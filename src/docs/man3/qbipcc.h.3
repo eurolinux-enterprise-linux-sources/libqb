@@ -1,4 +1,4 @@
-.TH "qbipcc.h" 3 "Thu Jul 25 2013" "Version 0.16.0" "libqb" \" -*- nroff -*-
+.TH "qbipcc.h" 3 "Tue Aug 26 2014" "Version 0.17.1" "libqb" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -84,6 +84,10 @@ Client IPC API\&.
 .RI "int32_t \fBqb_ipcc_is_connected\fP (\fBqb_ipcc_connection_t\fP *c)"
 .br
 .RI "\fIIs the connection connected? \fP"
+.ti -1c
+.RI "int32_t \fBqb_ipcc_get_buffer_size\fP (\fBqb_ipcc_connection_t\fP *c)"
+.br
+.RI "\fIWhat is the actual buffer size used after the connection\&. \fP"
 .in -1c
 .SH "Detailed Description"
 .PP 
@@ -150,7 +154,7 @@ Get the context (set previously) \fBParameters:\fP
 the context 
 .RE
 .PP
-\fBSee Also:\fP
+\fBSee also:\fP
 .RS 4
 \fBqb_ipcc_context_set()\fP 
 .RE
@@ -166,7 +170,7 @@ Associate a 'user' pointer with this connection\&. \fBParameters:\fP
 \fIc\fP connection instance 
 .RE
 .PP
-\fBSee Also:\fP
+\fBSee also:\fP
 .RS 4
 \fBqb_ipcc_context_get()\fP 
 .RE
@@ -232,6 +236,25 @@ Get the file descriptor to poll\&. \fBParameters:\fP
 \fIc\fP connection instance 
 .br
 \fIfd\fP (out) file descriptor to poll 
+.RE
+.PP
+
+.SS "int32_t qb_ipcc_get_buffer_size (\fBqb_ipcc_connection_t\fP *c)"
+
+.PP
+What is the actual buffer size used after the connection\&. \fBNote:\fP
+.RS 4
+The buffer size is guaranteed to be at least the size of the value given in qb_ipcc_connect, but it is possible the server will enforce a larger size depending on the implementation\&. If the server side is known to enforce a buffer size, use this function after the client connection is established to retrieve the buffer size in use\&. It is important for the client side to know the buffer size in use so the client can successfully retrieve large server events\&.
+.RE
+.PP
+\fBParameters:\fP
+.RS 4
+\fIc\fP connection instance 
+.RE
+.PP
+\fBReturn values:\fP
+.RS 4
+\fIconnection\fP size in bytes or -error code 
 .RE
 .PP
 
@@ -347,7 +370,7 @@ the iov[0] must include a \fBqb_ipc_request_header\fP at the top of the message\
 that msg_ptr will include a \fBqb_ipc_response_header\fP at the top of the message\&.
 .RE
 .PP
-\fBSee Also:\fP
+\fBSee also:\fP
 .RS 4
 \fBqb_ipcc_sendv()\fP \fBqb_ipcc_recv()\fP 
 .RE
