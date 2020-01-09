@@ -1,6 +1,6 @@
 Name:           libqb
 Version:        0.16.0
-Release:        1%{?dist}.1
+Release:        2%{?dist}
 Summary:        An IPC library for high performance servers
 
 Group:          System Environment/Libraries
@@ -73,9 +73,13 @@ developing applications that use %{name}.
 %{_mandir}/man8/qb-blackbox.8.gz
 
 %changelog
+* Wed Jul 25 2013 David Vossel <dvossel@redhat.com> - 0.16.0-2
+- Re-add fix required to build under brew.
+  Resolves: rhbz#950403
 
-* Mon Aug 19 2013 David Vossel <dvossel@redhat.com> - 0.16.0-1.1
-- Rebase of libqb for pacemaker support.
+* Wed Jul 25 2013 David Vossel <dvossel@redhat.com> - 0.16.0-1
+- rebase to v0.16.0
+  Resolves: rhbz#950403
 
 * Mon Nov 19 2012 David Vossel <dvossel@redhat.com> - 0.14.2-3
 - Additional upstream work to address 100% cpu usage bug in
