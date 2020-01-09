@@ -1,4 +1,4 @@
-.TH "qbloop.h" 3 "Mon Sep 10 2012" "Version 0.14.2" "libqb" \" -*- nroff -*-
+.TH "qbloop.h" 3 "Thu Jul 25 2013" "Version 0.16.0" "libqb" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -47,7 +47,7 @@ Main loop manages timers, jobs and polling sockets\&.
 
 .in +1c
 .ti -1c
-.RI "enum \fBqb_loop_priority\fP { \fBQB_LOOP_LOW\fP =  0, \fBQB_LOOP_MED\fP =  1, \fBQB_LOOP_HIGH\fP =  2 }"
+.RI "enum \fBqb_loop_priority\fP { \fBQB_LOOP_LOW\fP = 0, \fBQB_LOOP_MED\fP = 1, \fBQB_LOOP_HIGH\fP = 2 }"
 .br
 .RI "\fIPriorites for jobs, timers & poll\&. \fP"
 .in -1c
@@ -154,7 +154,7 @@ An opaque data type representing the main loop\&.
 .PP
 Priorites for jobs, timers & poll\&. 
 .PP
-\fBEnumerator: \fP
+\fBEnumerator\fP
 .in +1c
 .TP
 \fB\fIQB_LOOP_LOW \fP\fP
@@ -162,7 +162,6 @@ Priorites for jobs, timers & poll\&.
 \fB\fIQB_LOOP_MED \fP\fP
 .TP
 \fB\fIQB_LOOP_HIGH \fP\fP
-
 .SH "Function Documentation"
 .PP 
 .SS "\fBqb_loop_t\fP* qb_loop_create (void)"

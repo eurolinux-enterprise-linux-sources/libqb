@@ -1,4 +1,4 @@
-.TH "qbmap.h" 3 "Mon Sep 10 2012" "Version 0.14.2" "libqb" \" -*- nroff -*-
+.TH "qbmap.h" 3 "Thu Jul 25 2013" "Version 0.16.0" "libqb" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -137,13 +137,13 @@ The hashtable is NOT ordered, but ptrie and skiplist are\&.
 Below is a simple example of how to iterate over a map\&. 
 .PP
 .nf
-   const char *p;
-   void *data;
-   qb_map_iter_t *it = qb_map_iter_create(m);
-   for (p = qb_map_iter_next(it, &data); p; p = qb_map_iter_next(it, &data)) {
-       printf('%s > %s\n', p, (char*) data);
-   }
-   qb_map_iter_free(it);
+const char *p;
+void *data;
+qb_map_iter_t *it = qb_map_iter_create(m);
+for (p = qb_map_iter_next(it, &data); p; p = qb_map_iter_next(it, &data)) {
+    printf('%s > %s\n', p, (char*) data);
+}
+qb_map_iter_free(it);
 
 .fi
 .PP
@@ -152,8 +152,8 @@ Below is a simple example of how to iterate over a map\&.
 Deletion of items within the iterator is supported\&. But note do not free the item memory in the iterator\&. If you need to free the data items then register for a notifier and free the memory there\&. This is required as the items are reference counted\&. 
 .PP
 .nf
-   qb_map_notify_add(m, NULL, my_map_free_handler,
-                     QB_MAP_NOTIFY_FREE, NULL);
+qb_map_notify_add(m, NULL, my_map_free_handler,
+             QB_MAP_NOTIFY_FREE, NULL);
 
 .fi
 .PP
@@ -168,7 +168,7 @@ These allow you to get callbacks when values are inserted/removed or replaced\&.
 hashtable only supports deletion and replacement notificatins\&. There is also a special global callback for freeing deleted and replaced values (QB_MAP_NOTIFY_FREE)\&. 
 .RE
 .PP
-\fBSee also:\fP
+\fBSee Also:\fP
 .RS 4
 \fBqb_map_notify_add()\fP \fBqb_map_notify_del_2()\fP
 .RE
@@ -180,23 +180,23 @@ The ptrie supports prefixes in the iterator:
 .PP
 .PP
 .nf
-   it = qb_map_pref_iter_create(m, 'aa');
-   while ((p = qb_map_iter_next(it, &data)) != NULL) {
-       printf('%s > %s\n', p, (char*)data);
-   }
-   qb_map_iter_free(it);
+it = qb_map_pref_iter_create(m, 'aa');
+while ((p = qb_map_iter_next(it, &data)) != NULL) {
+    printf('%s > %s\n', p, (char*)data);
+}
+qb_map_iter_free(it);
 .fi
 .PP
 .PP
 The ptrie also supports prefixes in notifications: (remember to pass QB_MAP_NOTIFY_RECURSIVE into the notify_add\&. 
 .PP
 .nf
-   qb_map_notify_add(m, 'root', my_map_notification,
-                    (QB_MAP_NOTIFY_INSERTED|
-                     QB_MAP_NOTIFY_DELETED|
-                     QB_MAP_NOTIFY_REPLACED|
-                     QB_MAP_NOTIFY_RECURSIVE),
-                    NULL);
+qb_map_notify_add(m, 'root', my_map_notification,
+            (QB_MAP_NOTIFY_INSERTED|
+             QB_MAP_NOTIFY_DELETED|
+             QB_MAP_NOTIFY_REPLACED|
+             QB_MAP_NOTIFY_RECURSIVE),
+            NULL);
 
 .fi
 .PP

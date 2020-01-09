@@ -1,4 +1,4 @@
-.TH "qblist.h" 3 "Mon Sep 10 2012" "Version 0.14.2" "libqb" \" -*- nroff -*-
+.TH "qblist.h" 3 "Thu Jul 25 2013" "Version 0.16.0" "libqb" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -36,6 +36,10 @@ This is a kernel style list implementation\&.
 .br
 .RI "\fIGet the struct for this entry\&. \fP"
 .ti -1c
+.RI "#define \fBqb_list_first_entry\fP(ptr, type, member)   \fBqb_list_entry\fP((ptr)->next, type, member)"
+.br
+.RI "\fIGet the first element from a list\&. \fP"
+.ti -1c
 .RI "#define \fBqb_list_for_each\fP(pos, head)   for (pos = (head)->next; pos != (head); pos = pos->next)"
 .br
 .RI "\fIIterate over a list\&. \fP"
@@ -63,6 +67,10 @@ This is a kernel style list implementation\&.
 .RI "#define \fBqb_list_for_each_entry_safe_reverse\fP(pos, n, head, member)"
 .br
 .RI "\fIIterate backwards over list safe against removal\&. \fP"
+.ti -1c
+.RI "#define \fBqb_list_for_each_entry_from\fP(pos, head, member)"
+.br
+.RI "\fIIterate over list of given type from the current point\&. \fP"
 .in -1c
 .SS "Functions"
 
@@ -84,6 +92,14 @@ This is a kernel style list implementation\&.
 .br
 .RI "\fIDelete an entry from the list\&. \fP"
 .ti -1c
+.RI "static void \fBqb_list_replace\fP (struct \fBqb_list_head\fP *old, struct \fBqb_list_head\fP *new)"
+.br
+.RI "\fIReplace old entry by new one\&. \fP"
+.ti -1c
+.RI "static int \fBqb_list_is_last\fP (const struct \fBqb_list_head\fP *list, const struct \fBqb_list_head\fP *head)"
+.br
+.RI "\fITests whether list is the last entry in list head\&. \fP"
+.ti -1c
 .RI "static int32_t \fBqb_list_empty\fP (const struct \fBqb_list_head\fP *head)"
 .br
 .RI "\fIA quick test to see if the list is empty (pointing to it's self)\&. \fP"
@@ -91,6 +107,10 @@ This is a kernel style list implementation\&.
 .RI "static void \fBqb_list_splice\fP (struct \fBqb_list_head\fP *list, struct \fBqb_list_head\fP *head)"
 .br
 .RI "\fIJoin two lists\&. \fP"
+.ti -1c
+.RI "static void \fBqb_list_splice_tail\fP (struct \fBqb_list_head\fP *list, struct \fBqb_list_head\fP *head)"
+.br
+.RI "\fIJoin two lists, each list being a queue\&. \fP"
 .ti -1c
 .RI "static int32_t \fBqb_list_length\fP (struct \fBqb_list_head\fP *head)"
 .br
@@ -133,6 +153,19 @@ Get the struct for this entry\&. \fBParameters:\fP
 .RE
 .PP
 
+.SS "#define qb_list_first_entry(ptr, type, member)   \fBqb_list_entry\fP((ptr)->next, type, member)"
+
+.PP
+Get the first element from a list\&. \fBParameters:\fP
+.RS 4
+\fIptr,:\fP the &struct list_head pointer\&. 
+.br
+\fItype,:\fP the type of the struct this is embedded in\&. 
+.br
+\fImember,:\fP the name of the list_struct within the struct\&. 
+.RE
+.PP
+
 .SS "#define qb_list_for_each(pos, head)   for (pos = (head)->next; pos != (head); pos = pos->next)"
 
 .PP
@@ -150,7 +183,7 @@ Referenced by qb_list_length()\&.
 \fBValue:\fP
 .PP
 .nf
-for (pos = qb_list_entry((head)->next, typeof(*pos), member);   \
+for (pos = qb_list_entry((head)->next, typeof(*pos), member);     \
              &pos->member != (head);                                    \
              pos = qb_list_entry(pos->member\&.next, typeof(*pos), member))
 .fi
@@ -158,6 +191,24 @@ for (pos = qb_list_entry((head)->next, typeof(*pos), member);   \
 Iterate over list of given type\&. \fBParameters:\fP
 .RS 4
 \fIpos,:\fP the type * to use as a loop counter\&. 
+.br
+\fIhead,:\fP the head for your list\&. 
+.br
+\fImember,:\fP the name of the list_struct within the struct\&. 
+.RE
+.PP
+
+.SS "#define qb_list_for_each_entry_from(pos, head, member)"
+\fBValue:\fP
+.PP
+.nf
+for (; &pos->member != (head);                                            \
+             pos = qb_list_entry(pos->member\&.next, typeof(*pos), member))
+.fi
+.PP
+Iterate over list of given type from the current point\&. \fBParameters:\fP
+.RS 4
+\fIpos,:\fP the type * to use as a loop cursor\&. 
 .br
 \fIhead,:\fP the head for your list\&. 
 .br
@@ -282,7 +333,7 @@ Add to the list (but at the end of the list)\&. \fBParameters:\fP
 \fIhead\fP pointer to the list head 
 .RE
 .PP
-\fBSee also:\fP
+\fBSee Also:\fP
 .RS 4
 \fBqb_list_add()\fP 
 .RE
@@ -317,6 +368,8 @@ boolean true/false
 
 .PP
 References qb_list_head::next\&.
+.PP
+Referenced by qb_list_splice(), and qb_list_splice_tail()\&.
 .SS "static void qb_list_init (struct \fBqb_list_head\fP *head)\fC [inline]\fP, \fC [static]\fP"
 
 .PP
@@ -330,6 +383,24 @@ Initialize the list entry\&. Points next and prev pointers to head\&.
 
 .PP
 References qb_list_head::next, and qb_list_head::prev\&.
+.SS "static int qb_list_is_last (const struct \fBqb_list_head\fP *list, const struct \fBqb_list_head\fP *head)\fC [inline]\fP, \fC [static]\fP"
+
+.PP
+Tests whether list is the last entry in list head\&. \fBParameters:\fP
+.RS 4
+\fIlist,:\fP the entry to test 
+.br
+\fIhead,:\fP the head of the list 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+boolean true/false 
+.RE
+.PP
+
+.PP
+References qb_list_head::next\&.
 .SS "static int32_t qb_list_length (struct \fBqb_list_head\fP *head)\fC [inline]\fP, \fC [static]\fP"
 
 .PP
@@ -346,6 +417,19 @@ length of the list\&.
 
 .PP
 References qb_list_for_each\&.
+.SS "static void qb_list_replace (struct \fBqb_list_head\fP *old, struct \fBqb_list_head\fP *new)\fC [inline]\fP, \fC [static]\fP"
+
+.PP
+Replace old entry by new one\&. \fBParameters:\fP
+.RS 4
+\fIold,:\fP the element to be replaced 
+.br
+\fInew,:\fP the new element to insert 
+.RE
+.PP
+
+.PP
+References qb_list_head::next, and qb_list_head::prev\&.
 .SS "static void qb_list_splice (struct \fBqb_list_head\fP *list, struct \fBqb_list_head\fP *head)\fC [inline]\fP, \fC [static]\fP"
 
 .PP
@@ -363,7 +447,20 @@ The 'list' is reinitialised
 .PP
 
 .PP
-References qb_list_head::next, and qb_list_head::prev\&.
+References qb_list_head::next, qb_list_head::prev, and qb_list_empty()\&.
+.SS "static void qb_list_splice_tail (struct \fBqb_list_head\fP *list, struct \fBqb_list_head\fP *head)\fC [inline]\fP, \fC [static]\fP"
+
+.PP
+Join two lists, each list being a queue\&. \fBParameters:\fP
+.RS 4
+\fIlist,:\fP the new list to add\&. 
+.br
+\fIhead,:\fP the place to add it in the first list\&. 
+.RE
+.PP
+
+.PP
+References qb_list_head::next, qb_list_head::prev, and qb_list_empty()\&.
 .SH "Author"
 .PP 
 Generated automatically by Doxygen for libqb from the source code\&.

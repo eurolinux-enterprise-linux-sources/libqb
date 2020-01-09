@@ -1,4 +1,4 @@
-.TH "qbipcs.h" 3 "Mon Sep 10 2012" "Version 0.14.2" "libqb" \" -*- nroff -*-
+.TH "qbipcs.h" 3 "Thu Jul 25 2013" "Version 0.16.0" "libqb" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -111,6 +111,14 @@ Server IPC API\&.
 .br
 .RI "\fISet your poll callbacks\&. \fP"
 .ti -1c
+.RI "void \fBqb_ipcs_service_context_set\fP (\fBqb_ipcs_service_t\fP *s, void *context)"
+.br
+.RI "\fIAssociate a 'user' pointer with this service\&. \fP"
+.ti -1c
+.RI "void * \fBqb_ipcs_service_context_get\fP (\fBqb_ipcs_service_t\fP *s)"
+.br
+.RI "\fIGet the context (set previously) \fP"
+.ti -1c
 .RI "int32_t \fBqb_ipcs_run\fP (\fBqb_ipcs_service_t\fP *s)"
 .br
 .RI "\fIrun the new IPC server\&. \fP"
@@ -162,6 +170,10 @@ Server IPC API\&.
 .RI "void * \fBqb_ipcs_context_get\fP (\fBqb_ipcs_connection_t\fP *c)"
 .br
 .RI "\fIGet the context (set previously) \fP"
+.ti -1c
+.RI "void * \fBqb_ipcs_connection_service_context_get\fP (\fBqb_ipcs_connection_t\fP *c)"
+.br
+.RI "\fIGet the context previously set on the service backing this connection\&. \fP"
 .ti -1c
 .RI "int32_t \fBqb_ipcs_connection_stats_get\fP (\fBqb_ipcs_connection_t\fP *c, struct \fBqb_ipcs_connection_stats\fP *stats, int32_t clear_after_read)"
 .br
@@ -250,7 +262,7 @@ This is the message processing calback\&. It is called with the message data\&.
 .SS "enum \fBqb_ipcs_rate_limit\fP"
 
 .PP
-\fBEnumerator: \fP
+\fBEnumerator\fP
 .in +1c
 .TP
 \fB\fIQB_IPCS_RATE_FAST \fP\fP
@@ -262,7 +274,6 @@ This is the message processing calback\&. It is called with the message data\&.
 \fB\fIQB_IPCS_RATE_OFF \fP\fP
 .TP
 \fB\fIQB_IPCS_RATE_OFF_2 \fP\fP
-
 .SH "Function Documentation"
 .PP 
 .SS "void qb_ipcs_connection_auth_set (\fBqb_ipcs_connection_t\fP *conn, uid_tuid, gid_tgid, mode_tmode)"
@@ -279,7 +290,7 @@ Set the permissions on and shared memory files so that both processes can read a
 \fImode\fP the mode to set\&.
 .RE
 .PP
-\fBSee also:\fP
+\fBSee Also:\fP
 .RS 4
 chmod() chown() 
 .RE
@@ -295,7 +306,7 @@ this must be called within the \fBqb_ipcs_connection_accept_fn()\fP callback\&.
 .PP
 Get the first connection\&. \fBNote:\fP
 .RS 4
-call qb_ipcs_connection_ref_dec() after using the connection\&.
+call \fBqb_ipcs_connection_unref()\fP after using the connection\&.
 .RE
 .PP
 \fBParameters:\fP
@@ -314,7 +325,7 @@ first connection
 .PP
 Get the next connection\&. \fBNote:\fP
 .RS 4
-call qb_ipcs_connection_ref_dec() after using the connection\&.
+call \fBqb_ipcs_connection_unref()\fP after using the connection\&.
 .RE
 .PP
 \fBParameters:\fP
@@ -336,6 +347,25 @@ next connection
 Increment the connection's reference counter\&. \fBParameters:\fP
 .RS 4
 \fIc\fP connection instance 
+.RE
+.PP
+
+.SS "void* qb_ipcs_connection_service_context_get (\fBqb_ipcs_connection_t\fP *c)"
+
+.PP
+Get the context previously set on the service backing this connection\&. \fBParameters:\fP
+.RS 4
+\fIc\fP connection instance 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+the context 
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBqb_ipcs_service_context_set\fP 
 .RE
 .PP
 
@@ -402,7 +432,7 @@ Get the context (set previously) \fBParameters:\fP
 the context 
 .RE
 .PP
-\fBSee also:\fP
+\fBSee Also:\fP
 .RS 4
 \fBqb_ipcs_context_set()\fP 
 .RE
@@ -418,7 +448,7 @@ Associate a 'user' pointer with this connection\&. \fBParameters:\fP
 \fIc\fP connection instance 
 .RE
 .PP
-\fBSee also:\fP
+\fBSee Also:\fP
 .RS 4
 \fBqb_ipcs_context_get()\fP 
 .RE
@@ -595,7 +625,42 @@ run the new IPC server\&. \fBParameters:\fP
 .PP
 \fBReturns:\fP
 .RS 4
-0 == ok; -errno to indicate a failure 
+0 == ok; -errno to indicate a failure\&. Service is destroyed on failure\&. 
+.RE
+.PP
+
+.SS "void* qb_ipcs_service_context_get (\fBqb_ipcs_service_t\fP *s)"
+
+.PP
+Get the context (set previously) \fBParameters:\fP
+.RS 4
+\fIs\fP service instance 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+the context 
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBqb_ipcs_service_context_set()\fP 
+.RE
+.PP
+
+.SS "void qb_ipcs_service_context_set (\fBqb_ipcs_service_t\fP *s, void *context)"
+
+.PP
+Associate a 'user' pointer with this service\&. \fBParameters:\fP
+.RS 4
+\fIs\fP service instance 
+.br
+\fIcontext\fP the pointer to associate with this service\&. 
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBqb_ipcs_service_context_get()\fP 
 .RE
 .PP
 

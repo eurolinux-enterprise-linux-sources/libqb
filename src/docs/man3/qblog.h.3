@@ -1,4 +1,4 @@
-.TH "qblog.h" 3 "Mon Sep 10 2012" "Version 0.14.2" "libqb" \" -*- nroff -*-
+.TH "qblog.h" 3 "Thu Jul 25 2013" "Version 0.16.0" "libqb" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -117,7 +117,7 @@ The logging API provides four main parts (basics, filtering, threading & blackbo
 
 .in +1c
 .ti -1c
-.RI "enum \fBqb_log_target_state\fP { \fBQB_LOG_STATE_UNUSED\fP =  1, \fBQB_LOG_STATE_DISABLED\fP =  2, \fBQB_LOG_STATE_ENABLED\fP =  3 }"
+.RI "enum \fBqb_log_target_state\fP { \fBQB_LOG_STATE_UNUSED\fP = 1, \fBQB_LOG_STATE_DISABLED\fP = 2, \fBQB_LOG_STATE_ENABLED\fP = 3 }"
 .br
 .ti -1c
 .RI "enum \fBqb_log_conf\fP { \fBQB_LOG_CONF_ENABLED\fP, \fBQB_LOG_CONF_FACILITY\fP, \fBQB_LOG_CONF_DEBUG\fP, \fBQB_LOG_CONF_SIZE\fP, \fBQB_LOG_CONF_THREADED\fP, \fBQB_LOG_CONF_PRIORITY_BUMP\fP, \fBQB_LOG_CONF_STATE_GET\fP, \fBQB_LOG_CONF_FILE_SYNC\fP }"
@@ -294,13 +294,13 @@ Call \fBqb_log()\fP to generate a log message\&. Then to write the message somew
 Simplist possible use: 
 .PP
 .nf
-   main() {
-        qb_log_init('simple-log', LOG_DAEMON, LOG_INFO);
+main() {
+     qb_log_init('simple-log', LOG_DAEMON, LOG_INFO);
         // \&.\&.\&.
-        qb_log(LOG_WARNING, 'watch out');
+     qb_log(LOG_WARNING, 'watch out');
         // \&.\&.\&.
-        qb_log_fini();
-   }
+     qb_log_fini();
+}
 
 .fi
 .PP
@@ -313,7 +313,7 @@ A log target can by syslog, stderr, the blackbox or a text file\&. By default on
 To enable a target do the following 
 .PP
 .nf
-        qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
+qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
 
 .fi
 .PP
@@ -321,8 +321,8 @@ To enable a target do the following
 syslog, stderr and the blackbox are static (they don't need to be created, just enabled or disabled\&. However you can open multiple logfiles (32 - QB_LOG_BLACKBOX)\&. To do this use the following code\&. 
 .PP
 .nf
-        mytarget = qb_log_file_open('/var/log/mylogfile');
-        qb_log_ctl(mytarget, QB_LOG_CONF_ENABLED, QB_TRUE);
+mytarget = qb_log_file_open('/var/log/mylogfile');
+qb_log_ctl(mytarget, QB_LOG_CONF_ENABLED, QB_TRUE);
 
 .fi
 .PP
@@ -330,7 +330,7 @@ syslog, stderr and the blackbox are static (they don't need to be created, just 
 Once your targets are enabled/opened you can configure them as follows: Configure the size of blackbox 
 .PP
 .nf
-        qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_SIZE, 1024*10);
+qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_SIZE, 1024*10);
 
 .fi
 .PP
@@ -338,7 +338,7 @@ Once your targets are enabled/opened you can configure them as follows: Configur
 Make logging to file threaded: 
 .PP
 .nf
-        qb_log_ctl(mytarget, QB_LOG_CONF_THREADED, QB_TRUE);
+qb_log_ctl(mytarget, QB_LOG_CONF_THREADED, QB_TRUE);
 
 .fi
 .PP
@@ -346,8 +346,8 @@ Make logging to file threaded:
 To workaround your syslog daemon filtering all messages > LOG_INFO 
 .PP
 .nf
-        qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_PRIORITY_BUMP,
-                   LOG_INFO - LOG_DEBUG);
+qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_PRIORITY_BUMP,
+      LOG_INFO - LOG_DEBUG);
 
 .fi
 .PP
@@ -355,7 +355,7 @@ To workaround your syslog daemon filtering all messages > LOG_INFO
 To ensure all logs to file targets are fsync'ed (default QB_FALSE) 
 .PP
 .nf
-        qb_log_ctl(mytarget, QB_LOG_CONF_FILE_SYNC, QB_TRUE);
+qb_log_ctl(mytarget, QB_LOG_CONF_FILE_SYNC, QB_TRUE);
 
 .fi
 .PP
@@ -375,8 +375,8 @@ format string + priority
 So to make all logs from evil_fnunction() go to stderr do the following: 
 .PP
 .nf
-        qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
-                          QB_LOG_FILTER_FUNCTION, 'evil_fnunction', LOG_TRACE);
+qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+             QB_LOG_FILTER_FUNCTION, 'evil_fnunction', LOG_TRACE);
 
 .fi
 .PP
@@ -384,8 +384,8 @@ So to make all logs from evil_fnunction() go to stderr do the following:
 So to make all logs from totem* (with a priority <= LOG_INFO) go to stderr do the following: 
 .PP
 .nf
-        qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
-                          QB_LOG_FILTER_FILE, 'totem', LOG_INFO);
+qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+             QB_LOG_FILTER_FILE, 'totem', LOG_INFO);
 
 .fi
 .PP
@@ -393,8 +393,8 @@ So to make all logs from totem* (with a priority <= LOG_INFO) go to stderr do th
 So to make all logs with the substring 'ringbuffer' go to stderr do the following: 
 .PP
 .nf
-        qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
-                          QB_LOG_FILTER_FORMAT, 'ringbuffer', LOG_TRACE);
+qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+             QB_LOG_FILTER_FORMAT, 'ringbuffer', LOG_TRACE);
 
 .fi
 .PP
@@ -407,18 +407,18 @@ To achieve non-blocking logging you can use threaded logging\&. So any calls to 
 Threaded logging use: 
 .PP
 .nf
-   main() {
-        qb_log_init('simple-log', LOG_DAEMON, LOG_INFO);
-        qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_THREADED, QB_TRUE);
+main() {
+     qb_log_init('simple-log', LOG_DAEMON, LOG_INFO);
+     qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_THREADED, QB_TRUE);
         // \&.\&.\&.
         daemonize();
         // call this after you fork()
         qb_log_thread_start();
         // \&.\&.\&.
-        qb_log(LOG_WARNING, 'watch out');
+     qb_log(LOG_WARNING, 'watch out');
         // \&.\&.\&.
-        qb_log_fini();
-   }
+     qb_log_fini();
+}
 
 .fi
 .PP
@@ -436,28 +436,28 @@ the blackbox is not enabled by default\&.
 Blackbox usage: 
 .PP
 .nf
-   static void sigsegv_handler(int sig)
-   {
+static void sigsegv_handler(int sig)
+{
         (void)signal (SIGSEGV, SIG_DFL);
         qb_log_blackbox_write_to_file('simple-log\&.fdata');
         qb_log_fini();
         raise(SIGSEGV);
-   }
-  
-   main() {
-  
-        signal(SIGSEGV, sigsegv_handler);
-  
-        qb_log_init('simple-log', LOG_DAEMON, LOG_INFO);
-        qb_log_filter_ctl(QB_LOG_BLACKBOX, QB_LOG_FILTER_ADD,
-                          QB_LOG_FILTER_FILE, '*', LOG_DEBUG);
-        qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_SIZE, 1024*10);
-        qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
+}
+
+main() {
+
+     signal(SIGSEGV, sigsegv_handler);
+
+     qb_log_init('simple-log', LOG_DAEMON, LOG_INFO);
+     qb_log_filter_ctl(QB_LOG_BLACKBOX, QB_LOG_FILTER_ADD,
+                  QB_LOG_FILTER_FILE, '*', LOG_DEBUG);
+     qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_SIZE, 1024*10);
+     qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
         // \&.\&.\&.
-        qb_log(LOG_WARNING, 'watch out');
+     qb_log(LOG_WARNING, 'watch out');
         // \&.\&.\&.
-        qb_log_fini();
-   }
+     qb_log_fini();
+}
 
 .fi
 .PP
@@ -469,7 +469,7 @@ You can tag messages using the second argument to \fBqb_logt()\fP or by using \f
 .PP
 .PP
 .nf
-   const char* my_tags_stringify(uint32_t tags) {
+const char* my_tags_stringify(uint32_t tags) {
         if (qb_bit_is_set(tags, QB_LOG_TAG_LIBQB_MSG_BIT) {
                 return 'libqb';
         } else if (tags == 3) {
@@ -477,23 +477,23 @@ You can tag messages using the second argument to \fBqb_logt()\fP or by using \f
         } else {
                 return 'MAIN';
         }
-   }
-   main() {
+}
+main() {
         // \&.\&.\&.
         qb_log_tags_stringify_fn_set(my_tags_stringify);
         qb_log_format_set(QB_LOG_STDERR, '[%5g] %p %b');
         // \&.\&.\&.
         qb_logt(LOG_INFO, 3, 'hello');
         qb_logt(LOG_INFO, 0, 'hello');
-   }
+}
 .fi
 .PP
  The code above will produce: 
 .PP
 .nf
-   [libqb] some message
-   [three] info hello
-   [MAIN ] info hello
+[libqb] some message
+[three] info hello
+[MAIN ] info hello
 
 .fi
 .PP
@@ -609,7 +609,7 @@ This is similar to perror except it goes into the logging system\&. \fBParameter
 .SS "enum \fBqb_log_conf\fP"
 
 .PP
-\fBEnumerator: \fP
+\fBEnumerator\fP
 .in +1c
 .TP
 \fB\fIQB_LOG_CONF_ENABLED \fP\fP
@@ -627,11 +627,10 @@ This is similar to perror except it goes into the logging system\&. \fBParameter
 \fB\fIQB_LOG_CONF_STATE_GET \fP\fP
 .TP
 \fB\fIQB_LOG_CONF_FILE_SYNC \fP\fP
-
 .SS "enum \fBqb_log_filter_conf\fP"
 
 .PP
-\fBEnumerator: \fP
+\fBEnumerator\fP
 .in +1c
 .TP
 \fB\fIQB_LOG_FILTER_ADD \fP\fP
@@ -645,11 +644,10 @@ This is similar to perror except it goes into the logging system\&. \fBParameter
 \fB\fIQB_LOG_TAG_CLEAR \fP\fP
 .TP
 \fB\fIQB_LOG_TAG_CLEAR_ALL \fP\fP
-
 .SS "enum \fBqb_log_filter_type\fP"
 
 .PP
-\fBEnumerator: \fP
+\fBEnumerator\fP
 .in +1c
 .TP
 \fB\fIQB_LOG_FILTER_FILE \fP\fP
@@ -657,11 +655,10 @@ This is similar to perror except it goes into the logging system\&. \fBParameter
 \fB\fIQB_LOG_FILTER_FUNCTION \fP\fP
 .TP
 \fB\fIQB_LOG_FILTER_FORMAT \fP\fP
-
 .SS "enum \fBqb_log_target_state\fP"
 
 .PP
-\fBEnumerator: \fP
+\fBEnumerator\fP
 .in +1c
 .TP
 \fB\fIQB_LOG_STATE_UNUSED \fP\fP
@@ -669,7 +666,6 @@ This is similar to perror except it goes into the logging system\&. \fBParameter
 \fB\fIQB_LOG_STATE_DISABLED \fP\fP
 .TP
 \fB\fIQB_LOG_STATE_ENABLED \fP\fP
-
 .SH "Function Documentation"
 .PP 
 .SS "struct \fBqb_log_callsite\fP __attribute__ ((aligned(8)))"
@@ -712,9 +708,9 @@ Dump the callsite info to stdout\&.
 .PP
 If you are using dynamically loadable modules via dlopen() and you load them after \fBqb_log_init()\fP then after you load the module you will need to do the following to get the filters to work in that module\&. .PP
 .nf
-        _start = dlsym (dl_handle, '__start___verbose');
-        _stop = dlsym (dl_handle, '__stop___verbose');
-        qb_log_callsites_register(_start, _stop);
+   _start = dlsym (dl_handle, '__start___verbose');
+_stop = dlsym (dl_handle, '__stop___verbose');
+qb_log_callsites_register(_start, _stop);
 .fi
 .PP
  
@@ -730,7 +726,7 @@ Main logging control function\&. \fBParameters:\fP
 \fIarg\fP the new value 
 .RE
 .PP
-\fBSee also:\fP
+\fBSee Also:\fP
 .RS 4
 \fBqb_log_conf\fP
 .RE
@@ -796,9 +792,9 @@ This extends \fBqb_log_filter_ctl()\fP by been able to provide a high_priority\&
 .PP
 Instead of using the \fBqb_log_filter_ctl()\fP functions you can apply the filters manually by defining a callback and setting the targets field using \fBqb_bit_set()\fP and \fBqb_bit_clear()\fP like the following below\&. .PP
 .nf
-   static void
-   m_filter(struct qb_log_callsite *cs)
-   {
+static void
+m_filter(struct qb_log_callsite *cs)
+{
         if ((cs->priority >= LOG_ALERT &&
              cs->priority <= LOG_DEBUG) &&
              strcmp(cs->filename, 'my_c_file\&.c') == 0) {
@@ -806,7 +802,7 @@ Instead of using the \fBqb_log_filter_ctl()\fP functions you can apply the filte
         } else {
                 qb_bit_clear(cs->targets, QB_LOG_SYSLOG);
         }
-   }
+}
 .fi
 .PP
  

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Red Hat, Inc.
+ * Copyright (C) 2010,2013 Red Hat, Inc.
  *
  * Author: Angus Salkeld <asalkeld@redhat.com>
  *
@@ -42,29 +42,6 @@
 #include "util_int.h"
 #include "ipc_int.h"
 
-#define SERVER_BACKLOG 5
-
-#ifndef UNIX_PATH_MAX
-#define UNIX_PATH_MAX    108
-#endif /* UNIX_PATH_MAX */
-
-/*
- * SUN_LEN() does a strlen() on sun_path, but if you are trying to use the
- * "Linux abstract namespace" (you have to set sun_path[0] == '\0') then
- * the strlen() doesn't work.
- */
-#if defined(SUN_LEN)
-#define QB_SUN_LEN(a) ((a)->sun_path[0] == '\0') ? sizeof(*(a)) : SUN_LEN(a)
-#else
-#define QB_SUN_LEN(a) sizeof(*(a))
-#endif
-
-struct ipc_us_control {
-	int32_t sent;
-	int32_t flow_control;
-};
-#define SHM_CONTROL_SIZE (3 * sizeof(struct ipc_us_control))
-
 struct ipc_auth_ugp {
 	uid_t uid;
 	gid_t gid;
@@ -72,20 +49,6 @@ struct ipc_auth_ugp {
 };
 
 static int32_t qb_ipcs_us_connection_acceptor(int fd, int revent, void *data);
-static int32_t qb_ipc_us_fc_get(struct qb_ipc_one_way *one_way);
-
-#ifdef SO_NOSIGPIPE
-static void
-socket_nosigpipe(int32_t s)
-{
-	int32_t on = 1;
-	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void *)&on, sizeof(on));
-}
-#endif
-
-#ifndef MSG_NOSIGNAL
-#define MSG_NOSIGNAL 0
-#endif
 
 ssize_t
 qb_ipc_us_send(struct qb_ipc_one_way *one_way, const void *msg, size_t len)
@@ -94,16 +57,17 @@ qb_ipc_us_send(struct qb_ipc_one_way *one_way, const void *msg, size_t len)
 	int32_t processed = 0;
 	char *rbuf = (char *)msg;
 
+	qb_sigpipe_ctl(QB_SIGPIPE_IGNORE);
+
 retry_send:
 	result = send(one_way->u.us.sock,
-		      &rbuf[processed],
-		      len - processed,
-		      MSG_NOSIGNAL);
+		      &rbuf[processed], len - processed, MSG_NOSIGNAL);
 
 	if (result == -1) {
 		if (errno == EAGAIN && processed > 0) {
 			goto retry_send;
 		} else {
+			qb_sigpipe_ctl(QB_SIGPIPE_DEFAULT);
 			return -errno;
 		}
 	}
@@ -112,61 +76,10 @@ retry_send:
 	if (processed != len) {
 		goto retry_send;
 	}
-	if (one_way->type == QB_IPC_SOCKET) {
-		struct ipc_us_control *ctl = NULL;
-		ctl = (struct ipc_us_control *)one_way->u.us.shared_data;
-		if (ctl) {
-			qb_atomic_int_inc(&ctl->sent);
-		}
-	}
+
+	qb_sigpipe_ctl(QB_SIGPIPE_DEFAULT);
+
 	return processed;
-}
-
-static ssize_t
-qb_ipc_us_sendv(struct qb_ipc_one_way *one_way, const struct iovec *iov,
-		size_t iov_len)
-{
-	int32_t result;
-	int32_t processed = 0;
-	int32_t total_processed = 0;
-	int32_t iov_p = 0;
-	char *rbuf = (char *)iov[iov_p].iov_base;
-
-retry_send:
-	result = send(one_way->u.us.sock,
-		      &rbuf[processed],
-		      iov[iov_p].iov_len - processed,
-		      MSG_NOSIGNAL);
-
-	if (result == -1) {
-		if (errno == EAGAIN &&
-		    (processed > 0 || iov_p > 0)) {
-			goto retry_send;
-		} else {
-			return -errno;
-		}
-	}
-
-	processed += result;
-	if (processed == iov[iov_p].iov_len) {
-		iov_p++;
-		total_processed += processed;
-		if (iov_p < iov_len) {
-			processed = 0;
-			rbuf = (char *)iov[iov_p].iov_base;
-			goto retry_send;
-		}
-	} else {
-		goto retry_send;
-	}
-	if (one_way->type == QB_IPC_SOCKET) {
-		struct ipc_us_control *ctl;
-		ctl = (struct ipc_us_control *)one_way->u.us.shared_data;
-		if (ctl) {
-			qb_atomic_int_inc(&ctl->sent);
-		}
-	}
-	return total_processed;
 }
 
 static ssize_t
@@ -174,6 +87,8 @@ qb_ipc_us_recv_msghdr(int32_t s, struct msghdr *hdr, char *msg, size_t len)
 {
 	int32_t result;
 	int32_t processed = 0;
+
+	qb_sigpipe_ctl(QB_SIGPIPE_IGNORE);
 
 retry_recv:
 	hdr->msg_iov->iov_base = &msg[processed];
@@ -184,9 +99,11 @@ retry_recv:
 		goto retry_recv;
 	}
 	if (result == -1) {
+		qb_sigpipe_ctl(QB_SIGPIPE_DEFAULT);
 		return -errno;
 	}
 	if (result == 0) {
+		qb_sigpipe_ctl(QB_SIGPIPE_DEFAULT);
 		qb_util_log(LOG_DEBUG,
 			    "recv(fd %d) got 0 bytes assuming ENOTCONN", s);
 		return -ENOTCONN;
@@ -196,6 +113,7 @@ retry_recv:
 	if (processed != len) {
 		goto retry_recv;
 	}
+	qb_sigpipe_ctl(QB_SIGPIPE_DEFAULT);
 	assert(processed == len);
 
 	return processed;
@@ -204,12 +122,16 @@ retry_recv:
 int32_t
 qb_ipc_us_sock_error_is_disconnected(int err)
 {
-	if (err == -EAGAIN ||
+	if (err >= 0) {
+		return QB_FALSE;
+	} else if (err == -EAGAIN ||
 	    err == -ETIMEDOUT ||
 	    err == -EINTR ||
 #ifdef EWOULDBLOCK
 	    err == -EWOULDBLOCK ||
 #endif
+	    err == -EMSGSIZE ||
+	    err == -ENOMSG ||
 	    err == -EINVAL) {
 		return QB_FALSE;
 	}
@@ -217,30 +139,49 @@ qb_ipc_us_sock_error_is_disconnected(int err)
 }
 
 int32_t
-qb_ipc_us_ready(struct qb_ipc_one_way * one_way,
+qb_ipc_us_ready(struct qb_ipc_one_way * ow_data,
+		struct qb_ipc_one_way * ow_conn,
 		int32_t ms_timeout, int32_t events)
 {
-	struct pollfd ufds;
+	struct pollfd ufds[2];
 	int32_t poll_events;
+	int numfds = 1;
+	int i;
 
-	ufds.fd = one_way->u.us.sock;
-	ufds.events = events;
-	ufds.revents = 0;
+	ufds[0].fd = ow_data->u.us.sock;
+	ufds[0].events = events;
+	ufds[0].revents = 0;
 
-	poll_events = poll(&ufds, 1, ms_timeout);
+	if (ow_conn && ow_data != ow_conn) {
+		numfds++;
+		ufds[1].fd = ow_conn->u.us.sock;
+		ufds[1].events = POLLIN;
+		ufds[1].revents = 0;
+	}
+	poll_events = poll(ufds, numfds, ms_timeout);
 	if ((poll_events == -1 && errno == EINTR) || poll_events == 0) {
 		return -EAGAIN;
 	} else if (poll_events == -1) {
 		return -errno;
-	} else if (poll_events == 1 && (ufds.revents & POLLERR)) {
-		qb_util_log(LOG_DEBUG, "poll(fd %d) got POLLERR", one_way->u.us.sock);
-		return -ENOTCONN;
-	} else if (poll_events == 1 && (ufds.revents & POLLHUP)) {
-		qb_util_log(LOG_DEBUG, "poll(fd %d) got POLLHUP", one_way->u.us.sock);
-		return -ENOTCONN;
-	} else if (poll_events == 1 && (ufds.revents & POLLNVAL)) {
-		qb_util_log(LOG_DEBUG, "poll(fd %d) got POLLNVAL", one_way->u.us.sock);
-		return -ENOTCONN;
+	}
+	for (i = 0; i < poll_events; i++) {
+		if (ufds[i].revents & POLLERR) {
+			qb_util_log(LOG_DEBUG, "poll(fd %d) got POLLERR",
+				    ufds[i].fd);
+			return -ENOTCONN;
+		} else if (ufds[i].revents & POLLHUP) {
+			qb_util_log(LOG_DEBUG, "poll(fd %d) got POLLHUP",
+				    ufds[i].fd);
+			return -ENOTCONN;
+		} else if (ufds[i].revents & POLLNVAL) {
+			qb_util_log(LOG_DEBUG, "poll(fd %d) got POLLNVAL",
+				    ufds[i].fd);
+			return -ENOTCONN;
+		} else if (ufds[i].revents == 0) {
+			qb_util_log(LOG_DEBUG, "poll(fd %d) zero revents",
+				    ufds[i].fd);
+			return -ENOTCONN;
+		}
 	}
 	return 0;
 }
@@ -253,102 +194,52 @@ qb_ipc_us_recv(struct qb_ipc_one_way * one_way,
 	       void *msg, size_t len, int32_t timeout)
 {
 	int32_t result;
+	int32_t final_rc = 0;
 	int32_t processed = 0;
 	int32_t to_recv = len;
 	char *data = msg;
+
+	qb_sigpipe_ctl(QB_SIGPIPE_IGNORE);
 
 retry_recv:
 	result = recv(one_way->u.us.sock, &data[processed], to_recv,
 		      MSG_NOSIGNAL | MSG_WAITALL);
 
 	if (result == -1) {
-		if (errno == EAGAIN &&
-		    (processed > 0 || timeout == -1)) {
-			goto retry_recv;
+		if (errno == EAGAIN && (processed > 0 || timeout == -1)) {
+			result = qb_ipc_us_ready(one_way, NULL, timeout, POLLIN);
+			if (result == 0 || result == -EAGAIN) {
+				goto retry_recv;
+			}
+			final_rc = result;
+			goto cleanup_sigpipe;
 		} else if (errno == ECONNRESET || errno == EPIPE) {
-			qb_util_perror(LOG_DEBUG,
-				       "recv(fd %d) converting to ENOTCONN",
-				       one_way->u.us.sock);
-			return -ENOTCONN;
+			final_rc = -ENOTCONN;
+			goto cleanup_sigpipe;
 		} else {
-			return -errno;
+			final_rc = -errno;
+			goto cleanup_sigpipe;
 		}
 	}
 
 	if (result == 0) {
-		qb_util_log(LOG_DEBUG,
-			    "recv(fd %d) got 0 bytes assuming ENOTCONN",
-			    one_way->u.us.sock);
-		return -ENOTCONN;
+		final_rc = -ENOTCONN;
+		goto cleanup_sigpipe;
 	}
 	processed += result;
 	to_recv -= result;
 	if (processed != len) {
 		goto retry_recv;
 	}
-	if (one_way->type == QB_IPC_SOCKET) {
-		struct ipc_us_control *ctl = NULL;
-		ctl = (struct ipc_us_control *)one_way->u.us.shared_data;
-		if (ctl) {
-			(void)qb_atomic_int_dec_and_test(&ctl->sent);
-		}
-	}
-	return processed;
+	final_rc = processed;
+
+cleanup_sigpipe:
+	qb_sigpipe_ctl(QB_SIGPIPE_DEFAULT);
+	return final_rc;
 }
-
-/*
- * recv a message of unknown size.
- */
-static ssize_t
-qb_ipc_us_recv_at_most(struct qb_ipc_one_way * one_way,
-	       void *msg, size_t len, int32_t timeout)
-{
-	int32_t result;
-	int32_t processed = 0;
-	int32_t to_recv = sizeof(struct qb_ipc_request_header);
-	char *data = msg;
-	struct ipc_us_control *ctl = NULL;
-	struct qb_ipc_request_header *hdr = NULL;
-
-retry_recv:
-	result = recv(one_way->u.us.sock, &data[processed], to_recv,
-		      MSG_NOSIGNAL | MSG_WAITALL);
-	if (result == -1) {
-		if (errno == EAGAIN &&
-		    (processed > 0 || timeout == -1)) {
-			goto retry_recv;
-		} else {
-			return -errno;
-		}
-	} else if (result == 0) {
-		qb_util_log(LOG_DEBUG,
-			    "recv(fd %d) got 0 bytes assuming ENOTCONN",
-			    one_way->u.us.sock);
-		return -ENOTCONN;
-	}
-
-	processed += result;
-	if (processed >= sizeof(struct qb_ipc_request_header) && hdr == NULL) {
-		hdr = (struct qb_ipc_request_header*)msg;
-	}
-	if (hdr) {
-		to_recv = hdr->size - processed;
-	} else {
-		to_recv = len - processed;
-	}
-	if (to_recv > 0) {
-		goto retry_recv;
-	}
-	ctl = (struct ipc_us_control *)one_way->u.us.shared_data;
-	if (ctl) {
-		(void)qb_atomic_int_dec_and_test(&ctl->sent);
-	}
-	return processed;
-}
-
 
 static int32_t
-qb_ipcc_us_sock_connect(const char *socket_name, int32_t * sock_pt)
+qb_ipcc_stream_sock_connect(const char *socket_name, int32_t * sock_pt)
 {
 	int32_t request_fd;
 	struct sockaddr_un address;
@@ -358,9 +249,9 @@ qb_ipcc_us_sock_connect(const char *socket_name, int32_t * sock_pt)
 	if (request_fd == -1) {
 		return -errno;
 	}
-#ifdef SO_NOSIGPIPE
-	socket_nosigpipe(request_fd);
-#endif /* SO_NOSIGPIPE */
+
+	qb_socket_nosigpipe(request_fd);
+
 	res = qb_sys_fd_nonblock_cloexec_set(request_fd);
 	if (res < 0) {
 		goto error_connect;
@@ -412,13 +303,13 @@ qb_ipcc_us_setup_connect(struct qb_ipcc_connection *c,
 	int on = 1;
 #endif
 
-	res = qb_ipcc_us_sock_connect(c->name, &c->setup.u.us.sock);
+	res = qb_ipcc_stream_sock_connect(c->name, &c->setup.u.us.sock);
 	if (res != 0) {
 		return res;
 	}
-
 #ifdef QB_LINUX
-	setsockopt(c->setup.u.us.sock, SOL_SOCKET, SO_PASSCRED, &on, sizeof(on));
+	setsockopt(c->setup.u.us.sock, SOL_SOCKET, SO_PASSCRED, &on,
+		   sizeof(on));
 #endif
 
 	memset(&request, 0, sizeof(request));
@@ -430,9 +321,9 @@ qb_ipcc_us_setup_connect(struct qb_ipcc_connection *c,
 		qb_ipcc_us_sock_close(c->setup.u.us.sock);
 		return res;
 	}
-
 #ifdef QB_LINUX
-	setsockopt(c->setup.u.us.sock, SOL_SOCKET, SO_PASSCRED, &off, sizeof(off));
+	setsockopt(c->setup.u.us.sock, SOL_SOCKET, SO_PASSCRED, &off,
+		   sizeof(off));
 #endif
 
 	res =
@@ -446,82 +337,6 @@ qb_ipcc_us_setup_connect(struct qb_ipcc_connection *c,
 		return r->hdr.error;
 	}
 	return 0;
-}
-
-static void
-qb_ipcc_us_disconnect(struct qb_ipcc_connection *c)
-{
-	munmap(c->request.u.us.shared_data, SHM_CONTROL_SIZE);
-	unlink(c->request.u.us.shared_file_name);
-	close(c->request.u.us.sock);
-	close(c->event.u.us.sock);
-}
-
-int32_t
-qb_ipcc_us_connect(struct qb_ipcc_connection *c,
-		   struct qb_ipc_connection_response *r)
-{
-	int32_t res;
-	struct qb_ipc_event_connection_request request;
-	char path[PATH_MAX];
-	int32_t fd_hdr;
-	char * shm_ptr;
-
-	c->needs_sock_for_poll = QB_FALSE;
-	c->funcs.send = qb_ipc_us_send;
-	c->funcs.sendv = qb_ipc_us_sendv;
-	c->funcs.recv = qb_ipc_us_recv_at_most;
-	c->funcs.fc_get = qb_ipc_us_fc_get;
-	c->funcs.disconnect = qb_ipcc_us_disconnect;
-
-	c->request.u.us.sock = c->setup.u.us.sock;
-	c->response.u.us.sock = c->setup.u.us.sock;
-	c->setup.u.us.sock = -1;
-
-	fd_hdr = qb_sys_mmap_file_open(path, r->request,
-				       SHM_CONTROL_SIZE, O_RDWR);
-	if (fd_hdr < 0) {
-		res = -errno;
-		qb_util_perror(LOG_ERR, "couldn't open file for mmap");
-		return res;
-	}
-	(void)strlcpy(c->request.u.us.shared_file_name, r->request, NAME_MAX);
-	shm_ptr = mmap(0, SHM_CONTROL_SIZE,
-		       PROT_READ | PROT_WRITE, MAP_SHARED, fd_hdr, 0);
-
-	if (shm_ptr == MAP_FAILED) {
-		res = -errno;
-		qb_util_perror(LOG_ERR, "couldn't create mmap for header");
-		goto cleanup_hdr;
-	}
-	c->request.u.us.shared_data = shm_ptr;
-	c->response.u.us.shared_data = shm_ptr + sizeof(struct ipc_us_control);
-	c->event.u.us.shared_data =  shm_ptr + (2 * sizeof(struct ipc_us_control));
-
-	close(fd_hdr);
-
-	res = qb_ipcc_us_sock_connect(c->name, &c->event.u.us.sock);
-	if (res != 0) {
-		goto cleanup_hdr;
-	}
-
-	memset(&request, 0, sizeof(request));
-	request.hdr.id = QB_IPC_MSG_NEW_EVENT_SOCK;
-	request.hdr.size = sizeof(request);
-	request.connection = r->connection;
-	res = qb_ipc_us_send(&c->event, &request, request.hdr.size);
-	if (res < 0) {
-		qb_ipcc_us_sock_close(c->event.u.us.sock);
-		goto cleanup_hdr;
-	}
-
-	return 0;
-
-cleanup_hdr:
-	close(fd_hdr);
-	unlink(r->request);
-	munmap(c->request.u.us.shared_data, SHM_CONTROL_SIZE);
-	return res;
 }
 
 /*
@@ -649,8 +464,7 @@ handle_new_connection(struct qb_ipcs_service *s,
 	c->auth.mode = 0600;
 	c->stats.client_pid = ugp->pid;
 	snprintf(c->description, CONNECTION_DESCRIPTION,
-		 "%d-%d-%d", s->pid, ugp->pid,
-		 c->setup.u.us.sock);
+		 "%d-%d-%d", s->pid, ugp->pid, c->setup.u.us.sock);
 
 	if (auth_result == 0 && c->service->serv_fns.connection_accept) {
 		res = c->service->serv_fns.connection_accept(c,
@@ -676,24 +490,6 @@ handle_new_connection(struct qb_ipcs_service *s,
 	c->state = QB_IPCS_CONNECTION_ACTIVE;
 	qb_list_add(&c->list, &s->connections);
 
-	if (s->needs_sock_for_poll) {
-		qb_ipcs_connection_ref(c);
-		res = s->poll_fns.dispatch_add(s->poll_priority,
-					       c->setup.u.us.sock,
-					       POLLIN | POLLPRI | POLLNVAL,
-					       c,
-					       qb_ipcs_dispatch_connection_request);
-		if (res < 0) {
-			qb_util_log(LOG_ERR,
-				    "Error adding socket to mainloop (%s).",
-				    c->description);
-		}
-	}
-	if (s->type == QB_IPC_SOCKET) {
-		c->request.u.us.sock = c->setup.u.us.sock;
-		c->response.u.us.sock = c->setup.u.us.sock;
-	}
-
 send_response:
 	response.hdr.id = QB_IPC_MSG_AUTHENTICATE;
 	response.hdr.size = sizeof(response);
@@ -711,63 +507,27 @@ send_response:
 	}
 
 	if (res == 0) {
-		if (s->type != QB_IPC_SOCKET) {
-			qb_ipcs_connection_ref(c);
-			if (s->serv_fns.connection_created) {
-				s->serv_fns.connection_created(c);
-			}
-			if (c->state == QB_IPCS_CONNECTION_ACTIVE) {
-				c->state = QB_IPCS_CONNECTION_ESTABLISHED;
-			}
-			qb_ipcs_connection_unref(c);
+		qb_ipcs_connection_ref(c);
+		if (s->serv_fns.connection_created) {
+			s->serv_fns.connection_created(c);
 		}
+		if (c->state == QB_IPCS_CONNECTION_ACTIVE) {
+			c->state = QB_IPCS_CONNECTION_ESTABLISHED;
+		}
+		qb_ipcs_connection_unref(c);
 	} else {
 		if (res == -EACCES) {
 			qb_util_log(LOG_ERR, "Invalid IPC credentials (%s).",
 				    c->description);
 		} else {
 			errno = -res;
-			qb_util_perror(LOG_ERR, "Error in connection setup (%s)",
+			qb_util_perror(LOG_ERR,
+				       "Error in connection setup (%s)",
 				       c->description);
 		}
 		qb_ipcs_disconnect(c);
 	}
 	return res;
-}
-
-static void
-handle_connection_new_sock(struct qb_ipcs_service *s, int32_t sock, void *msg)
-{
-	struct qb_ipcs_connection *c = NULL;
-	struct qb_ipc_event_connection_request *req = msg;
-
-	c = (struct qb_ipcs_connection *)req->connection;
-	qb_ipcs_connection_ref(c);
-	c->event.u.us.sock = sock;
-	if (c->state == QB_IPCS_CONNECTION_ACTIVE) {
-		c->state = QB_IPCS_CONNECTION_ESTABLISHED;
-	}
-	if (s->serv_fns.connection_created) {
-		s->serv_fns.connection_created(c);
-	}
-
-	if (c->state == QB_IPCS_CONNECTION_ESTABLISHED &&
-	    s->type == QB_IPC_SOCKET) {
-		int32_t res;
-		qb_ipcs_connection_ref(c);
-		res = s->poll_fns.dispatch_add(s->poll_priority,
-					       c->request.u.us.sock,
-					       POLLIN | POLLPRI | POLLNVAL,
-					       c,
-					       qb_ipcs_dispatch_connection_request);
-		if (res < 0) {
-			qb_util_log(LOG_ERR,
-				    "Error adding socket to mainloop (%s).",
-				    c->description);
-		}
-	}
-
-	qb_ipcs_connection_unref(c);
 }
 
 static int32_t
@@ -859,7 +619,8 @@ qb_ipcs_uc_recv_and_auth(int32_t sock, void *msg, size_t len,
 		struct cmsghdr *cmsg;
 
 		res = -EINVAL;
-		for (cmsg = CMSG_FIRSTHDR(&msg_recv); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg_recv, cmsg)) {
+		for (cmsg = CMSG_FIRSTHDR(&msg_recv); cmsg != NULL;
+		     cmsg = CMSG_NXTHDR(&msg_recv, cmsg)) {
 			if (cmsg->cmsg_type != SCM_CREDENTIALS)
 				continue;
 
@@ -898,7 +659,7 @@ qb_ipcs_us_connection_acceptor(int fd, int revent, void *data)
 	struct ipc_auth_ugp ugp;
 	socklen_t addrlen = sizeof(struct sockaddr_un);
 
-	if (revent & (POLLNVAL|POLLHUP|POLLERR)) {
+	if (revent & (POLLNVAL | POLLHUP | POLLERR)) {
 		/*
 		 * handle shutdown more cleanly.
 		 */
@@ -948,166 +709,9 @@ retry_accept:
 	if (setup_msg.hdr.id == QB_IPC_MSG_AUTHENTICATE) {
 		(void)handle_new_connection(s, res, new_fd, &setup_msg,
 					    sizeof(setup_msg), &ugp);
-	} else if (setup_msg.hdr.id == QB_IPC_MSG_NEW_EVENT_SOCK) {
-		if (res == 0) {
-			handle_connection_new_sock(s, new_fd, &setup_msg);
-		} else {
-			close(new_fd);
-		}
 	} else {
 		close(new_fd);
 	}
 
 	return 0;
-}
-
-static int32_t
-qb_ipcs_us_connect(struct qb_ipcs_service *s,
-		   struct qb_ipcs_connection *c,
-		   struct qb_ipc_connection_response *r)
-{
-	char path[PATH_MAX];
-	int32_t fd_hdr;
-	int32_t res = 0;
-	struct ipc_us_control *ctl;
-	char * shm_ptr;
-
-	qb_util_log(LOG_DEBUG, "connecting to client (%s)",
-		    c->description);
-
-	snprintf(r->request, NAME_MAX, "qb-%s-control-%s",
-		 s->name, c->description);
-
-	fd_hdr = qb_sys_mmap_file_open(path, r->request,
-				       SHM_CONTROL_SIZE,
-				       O_CREAT | O_TRUNC | O_RDWR);
-	if (fd_hdr < 0) {
-		res = -errno;
-		qb_util_perror(LOG_ERR, "couldn't create file for mmap (%s)",
-			       c->description);
-		return res;
-	}
-	(void)strlcpy(r->request, path, PATH_MAX);
-	(void)strlcpy(c->request.u.us.shared_file_name, r->request, NAME_MAX);
-	res = chown(r->request, c->auth.uid, c->auth.gid);
-	if (res != 0) {
-		/* ignore res, this is just for the compiler warnings.
-		 */
-		res = 0;
-	}
-	res = chmod(r->request, c->auth.mode);
-	if (res != 0) {
-		/* ignore res, this is just for the compiler warnings.
-		*/
-		res = 0;
-	}
-
-	shm_ptr = mmap(0, SHM_CONTROL_SIZE,
-		       PROT_READ | PROT_WRITE, MAP_SHARED, fd_hdr, 0);
-
-	if (shm_ptr == MAP_FAILED) {
-		res = -errno;
-		qb_util_perror(LOG_ERR, "couldn't create mmap for header (%s)",
-			       c->description);
-		goto cleanup_hdr;
-	}
-	c->request.u.us.shared_data = shm_ptr;
-	c->response.u.us.shared_data = shm_ptr + sizeof(struct ipc_us_control);
-	c->event.u.us.shared_data =  shm_ptr + (2 * sizeof(struct ipc_us_control));
-
-	ctl = (struct ipc_us_control *)c->request.u.us.shared_data;
-	ctl->sent = 0;
-	ctl->flow_control = 0;
-	ctl = (struct ipc_us_control *)c->response.u.us.shared_data;
-	ctl->sent = 0;
-	ctl->flow_control = 0;
-	ctl = (struct ipc_us_control *)c->event.u.us.shared_data;
-	ctl->sent = 0;
-	ctl->flow_control = 0;
-
-	close(fd_hdr);
-	return res;
-
-cleanup_hdr:
-	close(fd_hdr);
-	unlink(r->request);
-	munmap(c->request.u.us.shared_data, SHM_CONTROL_SIZE);
-	return res;
-}
-
-static void
-qb_ipc_us_fc_set(struct qb_ipc_one_way *one_way, int32_t fc_enable)
-{
-	struct ipc_us_control *ctl =
-	    (struct ipc_us_control *)one_way->u.us.shared_data;
-
-	qb_util_log(LOG_TRACE, "setting fc to %d",
-		    fc_enable);
-	qb_atomic_int_set(&ctl->flow_control, fc_enable);
-}
-
-static int32_t
-qb_ipc_us_fc_get(struct qb_ipc_one_way *one_way)
-{
-	struct ipc_us_control *ctl =
-	    (struct ipc_us_control *)one_way->u.us.shared_data;
-
-	return qb_atomic_int_get(&ctl->flow_control);
-}
-
-static ssize_t
-qb_ipc_us_q_len_get(struct qb_ipc_one_way *one_way)
-{
-	struct ipc_us_control *ctl =
-	    (struct ipc_us_control *)one_way->u.us.shared_data;
-	return qb_atomic_int_get(&ctl->sent);
-}
-
-void
-qb_ipcs_sockets_disconnect(struct qb_ipcs_connection *c)
-{
-	int sock = -1;
-
-	qb_enter();
-	if (c->service->needs_sock_for_poll && c->setup.u.us.sock > 0) {
-		sock = c->setup.u.us.sock;
-		qb_ipcc_us_sock_close(sock);
-		c->setup.u.us.sock = -1;
-	}
-	if (c->request.type == QB_IPC_SOCKET) {
-		sock = c->request.u.us.sock;
-	}
-	if (sock > 0) {
-		(void)c->service->poll_fns.dispatch_del(sock);
-		qb_ipcs_connection_unref(c);
-	}
-}
-
-static void
-qb_ipcs_us_disconnect(struct qb_ipcs_connection *c)
-{
-	qb_enter();
-	munmap(c->request.u.us.shared_data, SHM_CONTROL_SIZE);
-	unlink(c->request.u.us.shared_file_name);
-
-	qb_ipcc_us_sock_close(c->request.u.us.sock);
-	qb_ipcc_us_sock_close(c->event.u.us.sock);
-}
-
-void
-qb_ipcs_us_init(struct qb_ipcs_service *s)
-{
-	s->funcs.connect = qb_ipcs_us_connect;
-	s->funcs.disconnect = qb_ipcs_us_disconnect;
-
-	s->funcs.recv = qb_ipc_us_recv_at_most;
-	s->funcs.peek = NULL;
-	s->funcs.reclaim = NULL;
-	s->funcs.send = qb_ipc_us_send;
-	s->funcs.sendv = qb_ipc_us_sendv;
-
-	s->funcs.fc_set = qb_ipc_us_fc_set;
-	s->funcs.q_len_get = qb_ipc_us_q_len_get;
-
-	s->needs_sock_for_poll = QB_FALSE;
 }

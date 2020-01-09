@@ -55,6 +55,9 @@
 /* have builtin atomic operations */
 #undef HAVE_GCC_BUILTINS_FOR_ATOMIC_OPERATIONS
 
+/* have builtin sync operations */
+#undef HAVE_GCC_BUILTINS_FOR_SYNC_OPERATIONS
+
 /* Define to 1 if you have the `getpagesize' function. */
 #undef HAVE_GETPAGESIZE
 
@@ -99,6 +102,9 @@
 
 /* Define to 1 if you have a working `mmap' system call. */
 #undef HAVE_MMAP
+
+/* Define this symbol if you have MSG_NOSIGNAL */
+#undef HAVE_MSG_NOSIGNAL
 
 /* Define to 1 if you have the `munmap' function. */
 #undef HAVE_MUNMAP
@@ -150,6 +156,9 @@
 
 /* Define to 1 if you have the `socket' function. */
 #undef HAVE_SOCKET
+
+/* Define this symbol if you have SO_NOSIGPIPE */
+#undef HAVE_SO_NOSIGPIPE
 
 /* Define to 1 if you have the <stddef.h> header file. */
 #undef HAVE_STDDEF_H

@@ -1,4 +1,4 @@
-.TH "qbipcc.h" 3 "Mon Sep 10 2012" "Version 0.14.2" "libqb" \" -*- nroff -*-
+.TH "qbipcc.h" 3 "Thu Jul 25 2013" "Version 0.16.0" "libqb" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -36,6 +36,10 @@ Client IPC API\&.
 .RI "\fBqb_ipcc_connection_t\fP * \fBqb_ipcc_connect\fP (const char *name, size_t max_msg_size)"
 .br
 .RI "\fICreate a connection to an IPC service\&. \fP"
+.ti -1c
+.RI "int32_t \fBqb_ipcc_verify_dgram_max_msg_size\fP (size_t max_msg_size)"
+.br
+.RI "\fITest kernel dgram socket buffers to verify the largest size up to the max_msg_size value a single msg can be\&. \fP"
 .ti -1c
 .RI "void \fBqb_ipcc_disconnect\fP (\fBqb_ipcc_connection_t\fP *c)"
 .br
@@ -124,7 +128,12 @@ Create a connection to an IPC service\&. \fBParameters:\fP
 .PP
 \fBReturns:\fP
 .RS 4
-NULL (error: see errno) or a connection object\&. 
+NULL (error: see errno) or a connection object\&.
+.RE
+.PP
+\fBNote:\fP
+.RS 4
+It is recommended to do a one time check on the max_msg_size value using qb_ipcc_verify_dgram_max_msg_size \fIBEFORE\fP calling the connect function when IPC_SOCKET is in use\&. Some distributions while allow large message buffers to be set on the socket, but not actually honor them because of kernel state values\&. The qb_ipcc_verify_dgram_max_msg_size function both sets the socket buffer size and verifies it by doing a send/recv\&. 
 .RE
 .PP
 
@@ -141,7 +150,7 @@ Get the context (set previously) \fBParameters:\fP
 the context 
 .RE
 .PP
-\fBSee also:\fP
+\fBSee Also:\fP
 .RS 4
 \fBqb_ipcc_context_set()\fP 
 .RE
@@ -157,7 +166,7 @@ Associate a 'user' pointer with this connection\&. \fBParameters:\fP
 \fIc\fP connection instance 
 .RE
 .PP
-\fBSee also:\fP
+\fBSee Also:\fP
 .RS 4
 \fBqb_ipcc_context_get()\fP 
 .RE
@@ -338,9 +347,25 @@ the iov[0] must include a \fBqb_ipc_request_header\fP at the top of the message\
 that msg_ptr will include a \fBqb_ipc_response_header\fP at the top of the message\&.
 .RE
 .PP
-\fBSee also:\fP
+\fBSee Also:\fP
 .RS 4
 \fBqb_ipcc_sendv()\fP \fBqb_ipcc_recv()\fP 
+.RE
+.PP
+
+.SS "int32_t qb_ipcc_verify_dgram_max_msg_size (size_tmax_msg_size)"
+
+.PP
+Test kernel dgram socket buffers to verify the largest size up to the max_msg_size value a single msg can be\&. Rounds down to the nearest 1k\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fImax_msg_size\fP biggest msg size\&. 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+-1 if max size can not be detected, positive value representing the largest single msg up to max_msg_size that can successfully be sent over a unix dgram socket\&. 
 .RE
 .PP
 

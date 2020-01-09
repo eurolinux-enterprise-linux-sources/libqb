@@ -1,6 +1,6 @@
 Name:           libqb
-Version:        0.14.2
-Release:        3%{?dist}
+Version:        0.16.0
+Release:        1%{?dist}.1
 Summary:        An IPC library for high performance servers
 
 Group:          System Environment/Libraries
@@ -10,8 +10,6 @@ Source0:        https://fedorahosted.org/releases/q/u/quarterback/%{name}-%{vers
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 Patch1:         01-build-on-brew.patch
-Patch2:         bz869446-pass-timeout-to-poll.patch
-Patch3:         bz869446-call-poll-mid-msg-get-EAGAIN.patch
 
 ExclusiveArch: i686 x86_64 s390
 # not ppc at this point
@@ -28,8 +26,6 @@ Initially these are IPC and poll.
 %setup -q
 
 %patch1 -p1
-%patch2 -p1
-%patch3 -p1
 
 %build
 ./autogen.sh
@@ -77,6 +73,9 @@ developing applications that use %{name}.
 %{_mandir}/man8/qb-blackbox.8.gz
 
 %changelog
+
+* Mon Aug 19 2013 David Vossel <dvossel@redhat.com> - 0.16.0-1.1
+- Rebase of libqb for pacemaker support.
 
 * Mon Nov 19 2012 David Vossel <dvossel@redhat.com> - 0.14.2-3
 - Additional upstream work to address 100% cpu usage bug in
