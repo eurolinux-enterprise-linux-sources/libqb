@@ -1,6 +1,6 @@
 Name:           libqb
 Version:        1.0.1
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        An IPC library for high performance servers
 
 Group:          System Environment/Libraries
@@ -11,6 +11,8 @@ Source0:        https://github.com/ClusterLabs/%{name}/releases/download/v%{vers
 Patch1:         bz1422454-ipc-detect-corrupt-shm-in-peek.patch
 Patch2:         bz1446254-ipc-allow-fs-sockets.patch
 Patch3:         bz1459276-dont-truncate-in-client.patch
+Patch4:         bz1422573_1-dont-override-user-signals.patch
+Patch5:         bz1422573_2-dont-override-user-signals.patch
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -27,6 +29,8 @@ Initially these are IPC and poll.
 %patch1 -p1 -b .bz1422454-ipc-detect-corrupt-shm-in-peek
 %patch2 -p1 -b .bz1446254-ipc-allow-fs-sockets
 %patch3 -p1 -b .bz1459276-dont-truncate-in-client.patch
+%patch4 -p1 -b .bz1422573_1-dont-override-user-signals.patch
+%patch5 -p1 -b .bz1422573_2-dont-override-user-signals.patch
 
 # work-around for broken epoll in rawhide/f17
 %build
@@ -75,6 +79,10 @@ developing applications that use %{name}.
 %{_mandir}/man8/qb-blackbox.8.gz
 
 %changelog
+
+* Fri Nov 03 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-6
+  Don't override external signal handlers
+  Resolves: rhbz#1422573
 
 * Tue Jun 27 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-5
   Put backpatch 189ca28 as it's not the culprit
