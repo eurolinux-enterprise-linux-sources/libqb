@@ -1,6 +1,6 @@
 Name:           libqb
 Version:        1.0.1
-Release:        6%{?dist}
+Release:        7%{?dist}
 Summary:        An IPC library for high performance servers
 
 Group:          System Environment/Libraries
@@ -10,9 +10,10 @@ Source0:        https://github.com/ClusterLabs/%{name}/releases/download/v%{vers
 
 Patch1:         bz1422454-ipc-detect-corrupt-shm-in-peek.patch
 Patch2:         bz1446254-ipc-allow-fs-sockets.patch
-Patch3:         bz1459276-dont-truncate-in-client.patch
+#Patch3:         bz1459276-dont-truncate-in-client.patch
 Patch4:         bz1422573_1-dont-override-user-signals.patch
 Patch5:         bz1422573_2-dont-override-user-signals.patch
+Patch6:         bz1473695-dont-crash-on-shm-truncate.patch
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -28,9 +29,10 @@ Initially these are IPC and poll.
 %setup -q
 %patch1 -p1 -b .bz1422454-ipc-detect-corrupt-shm-in-peek
 %patch2 -p1 -b .bz1446254-ipc-allow-fs-sockets
-%patch3 -p1 -b .bz1459276-dont-truncate-in-client.patch
+#%patch3 -p1 -b .bz1459276-dont-truncate-in-client.patch
 %patch4 -p1 -b .bz1422573_1-dont-override-user-signals.patch
 %patch5 -p1 -b .bz1422573_2-dont-override-user-signals.patch
+%patch6 -p1 -b .bz1473695-dont-crash-on-shm-truncate.patch
 
 # work-around for broken epoll in rawhide/f17
 %build
@@ -79,6 +81,12 @@ developing applications that use %{name}.
 %{_mandir}/man8/qb-blackbox.8.gz
 
 %changelog
+
+* Fri Apr 20 2018 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-7
+  Prevent crashes when client truncates SHM segment
+  I've reverted the patch for 1459276 which is no longer needed as this
+  is a proper fix.
+  Resolves: rhbz#1473695
 
 * Fri Nov 03 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-6
   Don't override external signal handlers

@@ -1,0 +1,185 @@
+diff --git a/include/qb/qbipcs.h b/include/qb/qbipcs.h
+index 55c0f81..7b4daa7 100644
+--- a/include/qb/qbipcs.h
++++ b/include/qb/qbipcs.h
+@@ -142,6 +142,10 @@ typedef void (*qb_ipcs_connection_created_fn) (qb_ipcs_connection_t *c);
+  * successfully created.
+  * @note if you return anything but 0 this function will be
+  * repeativily called (until 0 is returned).
++ *
++ * With SHM connections libqb will briefly trap SIGBUS during the
++ * disconnect process to guard against server crashes if the mapped
++ * file is truncated. The signal will be restored afterwards.
+  */
+ typedef int32_t (*qb_ipcs_connection_closed_fn) (qb_ipcs_connection_t *c);
+ 
+diff --git a/lib/ipc_int.h b/lib/ipc_int.h
+index 67fc444..9cd06cf 100644
+--- a/lib/ipc_int.h
++++ b/lib/ipc_int.h
+@@ -92,6 +92,7 @@ struct qb_ipcc_connection {
+ 	char name[NAME_MAX];
+ 	int32_t needs_sock_for_poll;
+ 	gid_t egid;
++	pid_t server_pid;
+ 	struct qb_ipc_one_way setup;
+ 	struct qb_ipc_one_way request;
+ 	struct qb_ipc_one_way response;
+diff --git a/lib/ipc_setup.c b/lib/ipc_setup.c
+index 57d755b..0e16964 100644
+--- a/lib/ipc_setup.c
++++ b/lib/ipc_setup.c
+@@ -494,6 +494,7 @@ qb_ipcc_us_setup_connect(struct qb_ipcc_connection *c,
+ 
+ 	qb_ipc_auth_creds(data);
+ 	c->egid = data->ugp.gid;
++	c->server_pid = data->ugp.pid;
+ 
+ 	destroy_ipc_auth_data(data);
+ 	return r->hdr.error;
+diff --git a/lib/ipc_shm.c b/lib/ipc_shm.c
+index 699f4e4..9f237b6 100644
+--- a/lib/ipc_shm.c
++++ b/lib/ipc_shm.c
+@@ -20,6 +20,8 @@
+  */
+ #include "os_base.h"
+ #include <poll.h>
++#include <signal.h>
++#include <setjmp.h>
+ 
+ #include "ipc_int.h"
+ #include "util_int.h"
+@@ -36,9 +38,12 @@
+ static void
+ qb_ipcc_shm_disconnect(struct qb_ipcc_connection *c)
+ {
+-	void (*rb_destructor)(struct qb_ringbuffer_s *) = c->is_connected
+-		? qb_rb_close
+-		: qb_rb_force_close;
++	void (*rb_destructor)(struct qb_ringbuffer_s *);
++
++	rb_destructor = qb_rb_close;
++	if (!c->is_connected && (!c->server_pid || (kill(c->server_pid, 0) == -1 && errno == ESRCH))) {
++		rb_destructor = qb_rb_force_close;
++	}
+ 
+ 	qb_ipcc_us_sock_close(c->setup.u.us.sock);
+ 
+@@ -215,18 +220,30 @@ return_error:
+  * service functions
+  * --------------------------------------------------------
+  */
++static jmp_buf sigbus_jmpbuf;
++static void catch_sigbus(int signal)
++{
++	longjmp(sigbus_jmpbuf, 1);
++}
+ 
+ static void
+ qb_ipcs_shm_disconnect(struct qb_ipcs_connection *c)
+ {
+-	if (c->state == QB_IPCS_CONNECTION_ESTABLISHED ||
+-	    c->state == QB_IPCS_CONNECTION_ACTIVE) {
+-		if (c->setup.u.us.sock > 0) {
+-			(void)c->service->poll_fns.dispatch_del(c->setup.u.us.sock);
+-			qb_ipcc_us_sock_close(c->setup.u.us.sock);
+-			c->setup.u.us.sock = -1;
+-		}
++	struct sigaction sa;
++	struct sigaction old_sa;
++
++	/* Don't die if the client has truncated the SHM under us */
++	memset(&old_sa, 0, sizeof(old_sa));
++	memset(&sa, 0, sizeof(sa));
++	sa.sa_handler = catch_sigbus;
++	sigemptyset(&sa.sa_mask);
++	sa.sa_flags = 0;
++	sigaction(SIGBUS, &sa, &old_sa);
++
++	if (setjmp(sigbus_jmpbuf) == 1) {
++		goto end_disconnect;
+ 	}
++
+ 	if (c->state == QB_IPCS_CONNECTION_SHUTTING_DOWN ||
+ 	    c->state == QB_IPCS_CONNECTION_ACTIVE) {
+ 		if (c->response.u.shm.rb) {
+@@ -239,6 +256,17 @@ qb_ipcs_shm_disconnect(struct qb_ipcs_connection *c)
+ 			qb_rb_close(qb_rb_lastref_and_ret(&c->request.u.shm.rb));
+ 		}
+ 	}
++
++	if (c->state == QB_IPCS_CONNECTION_ESTABLISHED ||
++	    c->state == QB_IPCS_CONNECTION_ACTIVE) {
++		if (c->setup.u.us.sock > 0) {
++			(void)c->service->poll_fns.dispatch_del(c->setup.u.us.sock);
++			qb_ipcc_us_sock_close(c->setup.u.us.sock);
++			c->setup.u.us.sock = -1;
++		}
++	}
++end_disconnect:
++	sigaction(SIGBUS, &old_sa, NULL);
+ }
+ 
+ static int32_t
+diff --git a/tests/check_ipc.c b/tests/check_ipc.c
+index f8af2c5..46c3b40 100644
+--- a/tests/check_ipc.c
++++ b/tests/check_ipc.c
+@@ -444,18 +444,30 @@ run_ipc_server(void)
+ static int32_t
+ run_function_in_new_process(void (*run_ipc_server_fn)(void))
+ {
+-	pid_t pid = fork ();
++	pid_t pid1 = fork ();
++	pid_t pid2;
+ 
+-	if (pid == -1) {
++	if (pid1 == -1) {
+ 		fprintf (stderr, "Can't fork\n");
+ 		return -1;
+ 	}
+ 
+-	if (pid == 0) {
+-		run_ipc_server_fn();
+-		exit(0);
++	/* Double-fork so the servers can be reaped in a timely manner */
++	if (pid1 == 0) {
++		pid2 = fork();
++		if (pid2 == -1) {
++			fprintf (stderr, "Can't fork twice\n");
++			exit(0);
++		}
++		if (pid2 == 0) {
++			run_ipc_server_fn();
++			exit(0);
++		} else {
++			waitpid(pid2, NULL, 0);
++			exit(0);
++		}
+ 	}
+-	return pid;
++	return pid1;
+ }
+ 
+ static void
+--- a/lib/loop_poll.cg	2018-04-20 11:23:05.255007538 +0100
++++ b/lib/loop_poll.c	2018-04-20 11:23:36.000113203 +0100
+@@ -723,7 +723,7 @@ qb_loop_signal_mod(qb_loop_t * lp,
+ 	sig->p = p;
+ 
+ 	if (sig->signal != the_sig) {
+-		signal(sig->signal, SIG_DFL);
++		(void)signal(sig->signal, SIG_DFL);
+ 		sig->signal = the_sig;
+ 		_adjust_sigactions_(s);
+ 	}
+@@ -774,7 +774,7 @@ qb_loop_signal_del(qb_loop_t * lp, qb_lo
+ 	}
+ 
+ 	qb_list_del(&sig->item.list);
+-	signal(sig->signal, SIG_DFL);
++	(void)signal(sig->signal, SIG_DFL);
+ 	free(sig);
+ 	_adjust_sigactions_(s);
+ 	return 0;
