@@ -1,13 +1,15 @@
 Name:           libqb
 Version:        1.0
-Release:        1%{?dist}
+Release:        1%{?dist}.1
 Summary:        An IPC library for high performance servers
 
 Group:          System Environment/Libraries
 License:        LGPLv2+
 URL:            http://clusterlabs.github.io/libqb/
 Source0:        https://github.com/ClusterLabs/%{name}/releases/download/v%{version}/%{name}-%{version}.tar.xz
-#Source0:        https://github.com/ClusterLabs/%{name}/archive/v%{version}.tar.gz
+
+Patch0: bz1437023-ipc-detect-corrupt-shm-in-peek.patch
+
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -21,6 +23,8 @@ Initially these are IPC and poll.
 
 %prep
 %setup -q
+%patch0 -p1 -b .bz1437023-ipc-detect-corrupt-shm-in-peek.patch
+
 
 # work-around for broken epoll in rawhide/f17
 %build
@@ -69,6 +73,9 @@ developing applications that use %{name}.
 %{_mandir}/man8/qb-blackbox.8.gz
 
 %changelog
+* Wed Mar 29 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0-1.1
+  Detect corruption in IPC shared memory
+  Resolves: rhbz#1437023
 
 * Thu Apr 21 2016 Christine Caulfield <ccaulfie@redhat.com> - 1.0-1
   Rebase to 1.0
