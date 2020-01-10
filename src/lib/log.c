@@ -352,10 +352,8 @@ qb_log_callsite_get(const char *function,
 			_custom_filter_fn(cs);
 		}
 		pthread_rwlock_unlock(&_listlock);
-	} else {
-	        if (tags && cs->tags != tags) {
-		        cs->tags = tags;
-		}
+	} else if (cs->tags != tags) {
+		cs->tags = tags;
 		if (_custom_filter_fn) {
 			_custom_filter_fn(cs);
 		}
@@ -802,13 +800,13 @@ _log_so_walk_dlnames(void)
 			goto done;
 		}
 
-		start = dlsym(handle, QB_ATTR_SECTION_START_STR);
+		start = dlsym(handle, "__start___verbose");
 		error = dlerror();
 		if (error) {
 			goto done;
 		}
 
-		stop = dlsym(handle, QB_ATTR_SECTION_STOP_STR);
+		stop = dlsym(handle, "__stop___verbose");
 		error = dlerror();
 		if (error) {
 			goto done;
@@ -870,7 +868,7 @@ qb_log_init(const char *name, int32_t facility, uint8_t priority)
 
 	qb_log_dcs_init();
 #ifdef QB_HAVE_ATTRIBUTE_SECTION
-	qb_log_callsites_register(QB_ATTR_SECTION_START, QB_ATTR_SECTION_STOP);
+	qb_log_callsites_register(__start___verbose, __stop___verbose);
 	dl_iterate_phdr(_log_so_walk_callback, NULL);
 	_log_so_walk_dlnames();
 #endif /* QB_HAVE_ATTRIBUTE_SECTION */

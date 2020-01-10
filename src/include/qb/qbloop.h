@@ -29,7 +29,6 @@ extern "C" {
 
 #include <signal.h>
 #include <stdint.h>
-#include <poll.h>  /* make POLLIN etc. readily available */
 
 /**
  * @file qbloop.h

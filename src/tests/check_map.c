@@ -21,9 +21,7 @@
  * along with libqb.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "os_base.h"
-
-#include "check_common.h"
-
+#include <check.h>
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
 #include <qb/qbmap.h>
@@ -912,28 +910,80 @@ map_suite(void)
 	TCase *tc;
 	Suite *s = suite_create("qb_map");
 
-	add_tcase(s, tc, test_skiplist_simple);
-	add_tcase(s, tc, test_hashtable_simple);
-	add_tcase(s, tc, test_trie_simple);
-	add_tcase(s, tc, test_trie_partial_iterate);
-	add_tcase(s, tc, test_skiplist_remove);
-	add_tcase(s, tc, test_hashtable_remove);
-	add_tcase(s, tc, test_trie_notifications);
-	add_tcase(s, tc, test_hash_notifications);
-	add_tcase(s, tc, test_skiplist_notifications);
-	add_tcase(s, tc, test_skiplist_search);
+	tc = tcase_create("skiplist_simple");
+	tcase_add_test(tc, test_skiplist_simple);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("hashtable_simple");
+	tcase_add_test(tc, test_hashtable_simple);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("trie_simple");
+	tcase_add_test(tc, test_trie_simple);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("trie_partial_iterate");
+	tcase_add_test(tc, test_trie_partial_iterate);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("skiplist_remove");
+	tcase_add_test(tc, test_skiplist_remove);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("hashtable_remove");
+	tcase_add_test(tc, test_hashtable_remove);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("trie_notifications");
+	tcase_add_test(tc, test_trie_notifications);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("hash_notifications");
+	tcase_add_test(tc, test_hash_notifications);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("skiplist_notifications");
+	tcase_add_test(tc, test_skiplist_notifications);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("skiplist_search");
+	tcase_add_test(tc, test_skiplist_search);
+	suite_add_tcase(s, tc);
 
 /*
  * 	No hashtable_search as it assumes an ordered
  *	collection
  */
-	add_tcase(s, tc, test_trie_search);
-	add_tcase(s, tc, test_skiplist_traverse);
-	add_tcase(s, tc, test_hashtable_traverse);
-	add_tcase(s, tc, test_trie_traverse);
-	add_tcase(s, tc, test_skiplist_load, 30);
-	add_tcase(s, tc, test_hashtable_load, 30);
-	add_tcase(s, tc, test_trie_load, 30);
+	tc = tcase_create("trie_search");
+	tcase_add_test(tc, test_trie_search);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("skiplist_traverse");
+	tcase_add_test(tc, test_skiplist_traverse);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("hashtable_traverse");
+	tcase_add_test(tc, test_hashtable_traverse);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("trie_traverse");
+	tcase_add_test(tc, test_trie_traverse);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("skiplist_load");
+	tcase_add_test(tc, test_skiplist_load);
+	tcase_set_timeout(tc, 30);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("hashtable_load");
+	tcase_add_test(tc, test_hashtable_load);
+	tcase_set_timeout(tc, 30);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("trie_load");
+	tcase_add_test(tc, test_trie_load);
+	tcase_set_timeout(tc, 30);
+	suite_add_tcase(s, tc);
 
 	return s;
 }

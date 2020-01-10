@@ -22,8 +22,7 @@
  */
 
 #include "os_base.h"
-
-#include "check_common.h"
+#include <check.h>
 
 #include <qb/qbdefs.h>
 #include <qb/qbutil.h>
@@ -332,13 +331,35 @@ static Suite *loop_job_suite(void)
 	TCase *tc;
 	Suite *s = suite_create("loop_job");
 
-	add_tcase(s, tc, test_loop_job_input);
-	add_tcase(s, tc, test_loop_job_1);
-	add_tcase(s, tc, test_loop_job_4);
-	add_tcase(s, tc, test_loop_job_nuts, 5);
-	add_tcase(s, tc, test_job_rate_limit, 5);
-	add_tcase(s, tc, test_job_add_del);
-	add_tcase(s, tc, test_loop_job_order);
+	tc = tcase_create("limits");
+	tcase_add_test(tc, test_loop_job_input);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("run_one");
+	tcase_add_test(tc, test_loop_job_1);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("run_recursive");
+	tcase_add_test(tc, test_loop_job_4);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("run_500");
+	tcase_add_test(tc, test_loop_job_nuts);
+	tcase_set_timeout(tc, 5);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("rate_limit");
+	tcase_add_test(tc, test_job_rate_limit);
+	tcase_set_timeout(tc, 5);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("add_del");
+	tcase_add_test(tc, test_job_add_del);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("order");
+	tcase_add_test(tc, test_loop_job_order);
+	suite_add_tcase(s, tc);
 
 	return s;
 }
@@ -689,11 +710,24 @@ loop_timer_suite(void)
 	TCase *tc;
 	Suite *s = suite_create("loop_timers");
 
-	add_tcase(s, tc, test_loop_timer_input);
-	add_tcase(s, tc, test_loop_timer_basic, 30);
-	add_tcase(s, tc, test_loop_timer_precision, 30);
-	add_tcase(s, tc, test_loop_timer_expire_leak, 30);
+	tc = tcase_create("limits");
+	tcase_add_test(tc, test_loop_timer_input);
+	suite_add_tcase(s, tc);
 
+	tc = tcase_create("basic");
+	tcase_add_test(tc, test_loop_timer_basic);
+	tcase_set_timeout(tc, 30);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("precision");
+	tcase_add_test(tc, test_loop_timer_precision);
+	tcase_set_timeout(tc, 30);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("expire_leak");
+	tcase_add_test(tc, test_loop_timer_expire_leak);
+	tcase_set_timeout(tc, 30);
+	suite_add_tcase(s, tc);
 	return s;
 }
 
@@ -703,9 +737,18 @@ loop_signal_suite(void)
 	TCase *tc;
 	Suite *s = suite_create("loop_signal_suite");
 
-	add_tcase(s, tc, test_loop_sig_handling, 10);
-	add_tcase(s, tc, test_loop_sig_only_get_one);
-	add_tcase(s, tc, test_loop_sig_delete);
+	tc = tcase_create("signals");
+	tcase_add_test(tc, test_loop_sig_handling);
+	tcase_set_timeout(tc, 10);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("sig_only_one");
+	tcase_add_test(tc, test_loop_sig_only_get_one);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("sig_delete");
+	tcase_add_test(tc, test_loop_sig_delete);
+	suite_add_tcase(s, tc);
 
 	return s;
 }

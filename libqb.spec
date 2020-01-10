@@ -1,19 +1,13 @@
 Name:           libqb
-Version:        1.0.1
-Release:        7%{?dist}
+Version:        1.0
+Release:        1%{?dist}
 Summary:        An IPC library for high performance servers
 
 Group:          System Environment/Libraries
 License:        LGPLv2+
 URL:            http://clusterlabs.github.io/libqb/
 Source0:        https://github.com/ClusterLabs/%{name}/releases/download/v%{version}/%{name}-%{version}.tar.xz
-
-Patch1:         bz1422454-ipc-detect-corrupt-shm-in-peek.patch
-Patch2:         bz1446254-ipc-allow-fs-sockets.patch
-#Patch3:         bz1459276-dont-truncate-in-client.patch
-Patch4:         bz1422573_1-dont-override-user-signals.patch
-Patch5:         bz1422573_2-dont-override-user-signals.patch
-Patch6:         bz1473695-dont-crash-on-shm-truncate.patch
+#Source0:        https://github.com/ClusterLabs/%{name}/archive/v%{version}.tar.gz
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -27,12 +21,6 @@ Initially these are IPC and poll.
 
 %prep
 %setup -q
-%patch1 -p1 -b .bz1422454-ipc-detect-corrupt-shm-in-peek
-%patch2 -p1 -b .bz1446254-ipc-allow-fs-sockets
-#%patch3 -p1 -b .bz1459276-dont-truncate-in-client.patch
-%patch4 -p1 -b .bz1422573_1-dont-override-user-signals.patch
-%patch5 -p1 -b .bz1422573_2-dont-override-user-signals.patch
-%patch6 -p1 -b .bz1473695-dont-crash-on-shm-truncate.patch
 
 # work-around for broken epoll in rawhide/f17
 %build
@@ -81,48 +69,6 @@ developing applications that use %{name}.
 %{_mandir}/man8/qb-blackbox.8.gz
 
 %changelog
-
-* Fri Apr 20 2018 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-7
-  Prevent crashes when client truncates SHM segment
-  I've reverted the patch for 1459276 which is no longer needed as this
-  is a proper fix.
-  Resolves: rhbz#1473695
-
-* Fri Nov 03 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-6
-  Don't override external signal handlers
-  Resolves: rhbz#1422573
-
-* Tue Jun 27 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-5
-  Put backpatch 189ca28 as it's not the culprit
-  
-  Don't truncate IPC files in the client as it can cause servers to crash.
-  I've also had to (for this release) disable one of the tests as it checks
-  for truncated files.
-  Resolves: rhbz#1459276
-
-* Wed Jun 20 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-4
-  Revert git patch 189ca28 which caused problems with pacemaker CIB
-  closing down.
-  Resolves: rhbz#1459276
-
-* Mon May 15 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-3
-  Allow IPC system to use filesystem sockets instead of abstract
-  sockets if a configuration file exists.
-  Resolves: rhbz#1446254
-
-* Tue Jan 31 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-2
-  Detect IPC Shared memory corruption in peek as well as read. Prevents
-  the mainloop from spinning if multithreaded IPC (which is currently 
-  not supported) is attempted without locking.
-  Resolves: rhbz#1422454
-
-* Tue Jan 31 2017 Christine Caulfield <ccaulfie@redhat.com> - 1.0.1-1
-  * Rebase to 1.0.1
-  Resolves: rhbz#1392835
-
-* Tue Dec 06 2016 Christine Caulfield <ccaulfie@redhat.com> - 1.0-2
-  * Don't overwrite valid logging tags, breaks facility names on PPC64LE
-  Resolves: rhbz#1387165
 
 * Thu Apr 21 2016 Christine Caulfield <ccaulfie@redhat.com> - 1.0-1
   Rebase to 1.0

@@ -22,8 +22,7 @@
  */
 
 #include "os_base.h"
-
-#include "check_common.h"
+#include <check.h>
 
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
@@ -140,10 +139,21 @@ static Suite *array_suite(void)
 	TCase *tc;
 	Suite *s = suite_create("qb_array");
 
-	add_tcase(s, tc, test_array_limits);
-	add_tcase(s, tc, test_array_alloc_free);
-	add_tcase(s, tc, test_array_correct_retrieval);
-	add_tcase(s, tc, test_array_static_memory);
+	tc = tcase_create("limits");
+	tcase_add_test(tc, test_array_limits);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("alloc_free");
+	tcase_add_test(tc, test_array_alloc_free);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("correct_retrieval");
+	tcase_add_test(tc, test_array_correct_retrieval);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("static_memory");
+	tcase_add_test(tc, test_array_static_memory);
+	suite_add_tcase(s, tc);
 
 	return s;
 }

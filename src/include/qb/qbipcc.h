@@ -27,9 +27,12 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-#include <sys/types.h>  /* size_t, ssize_t */
-#include <sys/uio.h>  /* iovec */
+#include <qb/qbconfig.h>
 
+#include <pthread.h>
+#include <sys/poll.h>
+#include <sys/socket.h>
+#include <qb/qbhdb.h>
 #include <qb/qbipc_common.h>
 
 /**
@@ -50,7 +53,7 @@ extern "C" {
  * The function qb_ipcc_send() sends an message buffer request.
  *
  * @par Asynchronous events from the server
- * The qb_ipcc_event_recv() function receives an out-of-band asynchronous message.
+ * The qb_ipcc_event_recv() function receives an out-of-band asyncronous message.
  * The asynchronous messages are queued and can provide very high out-of-band performance.
  * To determine when to call qb_ipcc_event_recv() the qb_ipcc_fd_get() call is
  * used to obtain a file descriptor used in the poll() or select() system calls.

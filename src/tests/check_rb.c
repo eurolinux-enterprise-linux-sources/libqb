@@ -25,8 +25,7 @@
 #include <stdlib.h>
 #include <syslog.h>
 #include <errno.h>
-
-#include "check_common.h"
+#include <check.h>
 
 #include <qb/qbdefs.h>
 #include <qb/qbrb.h>
@@ -194,10 +193,21 @@ static Suite *rb_suite(void)
 	TCase *tc;
 	Suite *s = suite_create("ringbuffer");
 
-	add_tcase(s, tc, test_ring_buffer1);
-	add_tcase(s, tc, test_ring_buffer2);
-	add_tcase(s, tc, test_ring_buffer3);
-	add_tcase(s, tc, test_ring_buffer4);
+	tc = tcase_create("test01");
+	tcase_add_test(tc, test_ring_buffer1);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("test02");
+	tcase_add_test(tc, test_ring_buffer2);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("test03");
+	tcase_add_test(tc, test_ring_buffer3);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("test04");
+	tcase_add_test(tc, test_ring_buffer4);
+	suite_add_tcase(s, tc);
 
 	return s;
 }

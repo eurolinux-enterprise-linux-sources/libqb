@@ -23,7 +23,6 @@
 #include <qb/qbrb.h>
 #include "util_int.h"
 #include "log_int.h"
-#include "ringbuffer_int.h"
 
 #define BB_MIN_ENTRY_SIZE (4 * sizeof(uint32_t) +\
 			   sizeof(uint8_t) +\
@@ -77,9 +76,8 @@ _blackbox_vlogger(int32_t target,
 	if (chunk == NULL) {
 		/* something bad has happened. abort blackbox logging */
 		qb_util_perror(LOG_ERR, "Blackbox allocation error, aborting blackbox log %s", t->filename);
-		qb_rb_close(qb_rb_lastref_and_ret(
-			(struct qb_ringbuffer_s **) &t->instance
-		));
+		qb_rb_close(t->instance);
+		t->instance = NULL;
 		return;
 	}
 
@@ -134,9 +132,10 @@ _blackbox_close(int32_t target)
 {
 	struct qb_log_target *t = qb_log_target_get(target);
 
-	qb_rb_close(qb_rb_lastref_and_ret(
-		(struct qb_ringbuffer_s **) &t->instance
-	));
+	if (t->instance) {
+		qb_rb_close(t->instance);
+		t->instance = NULL;
+	}
 }
 
 int32_t
